@@ -13,6 +13,7 @@ from database import init_database, close_database
 from routers.attractions import router as attractions_router
 from routers.cache import router as cache_router
 from routers.raw import router as raw_router
+from routers.showtimes import router as showtimes_router
 from routers.waittimes import router as waittimes_router
 from services.auth import get_auth_service, initialize_auth, shutdown_auth
 from services.cache import get_cache_service
@@ -91,6 +92,7 @@ app.add_middleware(
 app.include_router(raw_router)
 app.include_router(cache_router)
 app.include_router(waittimes_router)
+app.include_router(showtimes_router)
 app.include_router(attractions_router)
 
 
