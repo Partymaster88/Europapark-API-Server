@@ -31,6 +31,17 @@ class TokenModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 
+class CacheModel(Base):
+    """Gecachte API-Daten in der Datenbank."""
+    
+    __tablename__ = "cache"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    data: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+
 _engine = None
 _session_factory = None
 

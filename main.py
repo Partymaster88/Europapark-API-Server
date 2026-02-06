@@ -10,8 +10,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
 from database import init_database, close_database
+from routers.cache import router as cache_router
 from routers.raw import router as raw_router
 from services.auth import get_auth_service, initialize_auth, shutdown_auth
+from services.cache import get_cache_service
 from services.firebase_health import check_firebase_health, get_firebase_status
 from services.scheduler import start_scheduler, stop_scheduler
 
@@ -46,6 +48,11 @@ async def lifespan(app: FastAPI):
     if auth_success:
         auth_service = get_auth_service()
         logger.info(f"Authentifizierung erfolgreich. Token gültig bis: {auth_service.get_status().get('expires_at')}")
+        
+        # Cache-Service starten (nur wenn authentifiziert)
+        cache_service = get_cache_service()
+        cache_service.start()
+        logger.info("Cache-Service gestartet.")
     else:
         logger.warning("Authentifizierung fehlgeschlagen.")
     
@@ -56,6 +63,7 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Fahre Server herunter...")
+    get_cache_service().stop()
     await shutdown_auth()
     stop_scheduler()
     await close_database()
@@ -79,6 +87,7 @@ app.add_middleware(
 
 # Router registrieren
 app.include_router(raw_router)
+app.include_router(cache_router)
 
 
 @app.get("/")
