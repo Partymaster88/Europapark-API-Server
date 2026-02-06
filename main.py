@@ -11,7 +11,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import get_settings
 from database import init_database, close_database
 from routers.attractions import router as attractions_router
-from routers.cache import router as cache_router
 from routers.raw import router as raw_router
 from routers.shows import router as shows_router
 from routers.showtimes import router as showtimes_router
@@ -91,7 +90,6 @@ app.add_middleware(
 
 # Router registrieren
 app.include_router(raw_router)
-app.include_router(cache_router)
 app.include_router(waittimes_router)
 app.include_router(showtimes_router)
 app.include_router(attractions_router)
