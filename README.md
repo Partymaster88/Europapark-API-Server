@@ -30,18 +30,27 @@ uvicorn main:app --reload --port 8000
 | `/` | Status |
 | `/health` | Health-Check |
 | `/docs` | Swagger UI |
+| `/raw/waittimes` | Rohe Wartezeiten-Daten |
+| `/raw/pois` | Rohe POI/Attraktionen-Daten |
+| `/raw/seasons` | Rohe Saison/Kalender-Daten |
+| `/raw/openingtimes` | Rohe Öffnungszeiten-Daten |
+| `/raw/showtimes` | Rohe Showzeiten-Daten |
 
 ## Struktur
 
 ```
 ├── main.py              # FastAPI App
 ├── config.py            # Settings
+├── database.py          # SQLAlchemy DB
 ├── nixpacks.toml        # Deployment
 ├── requirements.txt     # Dependencies
 ├── .env                 # Konfiguration
+├── routers/
+│   └── raw.py           # Raw API Routes
 └── services/
     ├── auth.py          # OAuth2
     ├── crypto.py        # Blowfish
+    ├── europapark_api.py # API Client
     ├── firebase_*.py    # Firebase
     ├── token_storage.py # Token Persistenz
     └── scheduler.py     # Daily Tasks

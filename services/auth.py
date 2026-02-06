@@ -9,7 +9,7 @@ from typing import Optional
 
 import httpx
 
-from config import Settings, get_settings
+from config import get_settings
 from services.firebase_config import get_firebase_config_service
 from services.token_storage import TokenData, TokenStorage, get_token_storage
 
@@ -19,16 +19,12 @@ logger = logging.getLogger(__name__)
 class AuthService:
     """Verwaltet die OAuth2-Authentifizierung."""
     
-    REFRESH_BUFFER_SECONDS = 600
+    REFRESH_BUFFER_SECONDS = 600  # 10 Minuten vor Ablauf erneuern
     MIN_REFRESH_INTERVAL_SECONDS = 60
     
-    def __init__(
-        self,
-        settings: Optional[Settings] = None,
-        token_storage: Optional[TokenStorage] = None
-    ):
-        self.settings = settings or get_settings()
-        self.token_storage = token_storage or get_token_storage()
+    def __init__(self):
+        self.settings = get_settings()
+        self.token_storage = get_token_storage()
         self.firebase_config = get_firebase_config_service()
         
         self._current_token: Optional[TokenData] = None
@@ -47,12 +43,12 @@ class AuthService:
         return None
     
     def get_auth_header(self) -> dict:
+        """Gibt den jwtauthorization Header für API-Requests zurück."""
         if not self.access_token:
             raise RuntimeError("Nicht authentifiziert.")
-        return {"Authorization": f"Bearer {self.access_token}"}
+        return {"jwtauthorization": f"Bearer {self.access_token}"}
     
     async def initialize(self) -> bool:
-        """Initialisiert den Auth-Service."""
         logger.info("Initialisiere Authentifizierung...")
         
         saved_token = await self.token_storage.load()
@@ -62,15 +58,6 @@ class AuthService:
             self._current_token = saved_token
             self._start_refresh_scheduler()
             return True
-        
-        if saved_token and saved_token.refresh_token:
-            logger.info("Token abgelaufen. Versuche Refresh...")
-            try:
-                await self._refresh_token(saved_token.refresh_token)
-                self._start_refresh_scheduler()
-                return True
-            except Exception as e:
-                logger.warning(f"Token Refresh fehlgeschlagen: {e}")
         
         try:
             await self._request_new_token()
@@ -86,44 +73,11 @@ class AuthService:
         credentials = await self.firebase_config.get_decrypted_credentials()
         logger.info(f"Verwende client_id: {credentials['username'][:8]}...")
         
-        token_data = await self._oauth2_token_request(
-            grant_type="client_credentials",
-            client_id=credentials["username"],
-            client_secret=credentials["password"]
-        )
-        
-        self._current_token = token_data
-        await self.token_storage.save(token_data)
-        logger.info(f"Neuer Token erhalten. Gültig bis: {token_data.expires_at}")
-    
-    async def _refresh_token(self, refresh_token: str) -> None:
-        logger.info("Erneuere Access Token...")
-        
-        credentials = await self.firebase_config.get_decrypted_credentials()
-        
-        token_data = await self._oauth2_token_request(
-            grant_type="refresh_token",
-            client_id=credentials["username"],
-            refresh_token=refresh_token
-        )
-        
-        self._current_token = token_data
-        await self.token_storage.save(token_data)
-        logger.info(f"Token erneuert. Gültig bis: {token_data.expires_at}")
-    
-    async def _oauth2_token_request(
-        self,
-        grant_type: str,
-        client_id: str,
-        client_secret: Optional[str] = None,
-        refresh_token: Optional[str] = None
-    ) -> TokenData:
-        payload = {"grant_type": grant_type, "client_id": client_id}
-        
-        if client_secret:
-            payload["client_secret"] = client_secret
-        if refresh_token:
-            payload["refresh_token"] = refresh_token
+        payload = {
+            "grant_type": "client_credentials",
+            "client_id": credentials["username"],
+            "client_secret": credentials["password"]
+        }
         
         headers = {
             "Content-Type": "application/json",
@@ -138,25 +92,21 @@ class AuthService:
             )
             
             if response.status_code != 200:
-                error_msg = f"Token Request fehlgeschlagen: {response.status_code}"
-                try:
-                    error_data = response.json()
-                    error_msg += f" - {error_data.get('error_description', error_data)}"
-                except Exception:
-                    error_msg += f" - {response.text}"
-                raise RuntimeError(error_msg)
+                raise RuntimeError(f"Token Request fehlgeschlagen: {response.status_code} - {response.text}")
             
             data = response.json()
         
-        expires_in = data.get("expires_in", 3600)
+        expires_in = data.get("expires_in", 86400)
         expires_at = datetime.now() + timedelta(seconds=expires_in)
         
-        return TokenData(
+        self._current_token = TokenData(
             access_token=data["access_token"],
-            refresh_token=data.get("refresh_token"),
             token_type=data.get("token_type", "Bearer"),
             expires_at=expires_at
         )
+        
+        await self.token_storage.save(self._current_token)
+        logger.info(f"Token erhalten. Gültig bis: {expires_at}")
     
     def _start_refresh_scheduler(self) -> None:
         if self._refresh_task and not self._refresh_task.done():
@@ -187,21 +137,13 @@ class AuthService:
                 )
                 
                 await asyncio.sleep(sleep_time)
-                
-                if self._current_token.refresh_token:
-                    try:
-                        await self._refresh_token(self._current_token.refresh_token)
-                    except Exception as e:
-                        logger.warning(f"Refresh fehlgeschlagen: {e}")
-                        await self._request_new_token()
-                else:
-                    await self._request_new_token()
+                await self._request_new_token()
                     
             except asyncio.CancelledError:
                 logger.info("Token Refresh Loop beendet.")
                 break
             except Exception as e:
-                logger.error(f"Fehler im Token Refresh Loop: {e}")
+                logger.error(f"Fehler im Token Refresh: {e}")
                 await asyncio.sleep(60)
     
     async def shutdown(self) -> None:
@@ -210,13 +152,11 @@ class AuthService:
     
     def get_status(self) -> dict:
         if self._current_token is None:
-            return {"authenticated": False, "token_present": False, "expires_at": None, "is_expired": True}
+            return {"authenticated": False, "expires_at": None}
         
         return {
             "authenticated": self.is_authenticated,
-            "token_present": True,
             "expires_at": self._current_token.expires_at.isoformat(),
-            "is_expired": self._current_token.is_expired(),
             "created_at": self._current_token.created_at.isoformat()
         }
 

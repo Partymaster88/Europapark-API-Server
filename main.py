@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
 from database import init_database, close_database
+from routers.raw import router as raw_router
 from services.auth import get_auth_service, initialize_auth, shutdown_auth
 from services.firebase_health import check_firebase_health, get_firebase_status
 from services.scheduler import start_scheduler, stop_scheduler
@@ -75,6 +76,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Router registrieren
+app.include_router(raw_router)
 
 
 @app.get("/")
