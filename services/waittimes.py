@@ -30,7 +30,6 @@ class AttractionStatus(str, Enum):
 class WaitTimeEntry(BaseModel):
     """Wartezeit-Eintrag."""
     id: int
-    code: int
     name: str
     time: Optional[int]
     status: AttractionStatus
@@ -133,7 +132,6 @@ async def get_processed_waittimes() -> list[WaitTimeEntry]:
         
         results.append(WaitTimeEntry(
             id=poi_id,
-            code=code,
             name=poi_name,
             time=clean_time,
             status=status,
