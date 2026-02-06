@@ -87,7 +87,10 @@ async def get_poi_name_map() -> dict[int, dict]:
     poi_map = {}
     for poi in pois_data["data"].get("pois", []):
         code = poi.get("code")
-        if code:
+        scopes = poi.get("scopes", [])
+        
+        # Nur Europapark POIs (keine Rulantica)
+        if code and "europapark" in scopes:
             poi_map[code] = {
                 "id": poi.get("id"),
                 "name": poi.get("name", "Unbekannt"),

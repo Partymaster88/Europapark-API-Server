@@ -72,7 +72,7 @@ class AttractionInfo(BaseModel):
 
 
 async def get_poi_by_id(attraction_id: int) -> Optional[dict]:
-    """Holt POI-Rohdaten anhand der ID."""
+    """Holt POI-Rohdaten anhand der ID (nur Europapark, keine Rulantica)."""
     cache = get_cache_service()
     pois_data = await cache.load(CACHE_KEYS["pois"])
     
@@ -80,7 +80,8 @@ async def get_poi_by_id(attraction_id: int) -> Optional[dict]:
         return None
     
     for poi in pois_data["data"].get("pois", []):
-        if poi.get("id") == attraction_id:
+        scopes = poi.get("scopes", [])
+        if poi.get("id") == attraction_id and "europapark" in scopes:
             return poi
     
     return None
@@ -179,7 +180,7 @@ async def get_attraction_info(attraction_id: int) -> Optional[AttractionInfo]:
 
 
 async def get_all_attractions() -> list[AttractionInfo]:
-    """Holt alle Attraktionen mit Basisinfos."""
+    """Holt alle Europapark-Attraktionen (keine Rulantica)."""
     cache = get_cache_service()
     pois_data = await cache.load(CACHE_KEYS["pois"])
     
@@ -188,8 +189,10 @@ async def get_all_attractions() -> list[AttractionInfo]:
     
     results = []
     for poi in pois_data["data"].get("pois", []):
-        # Nur Attraktionen
-        if poi.get("type") != "attraction":
+        scopes = poi.get("scopes", [])
+        
+        # Nur Europapark Attraktionen (keine Rulantica)
+        if poi.get("type") != "attraction" or "europapark" not in scopes:
             continue
         
         # Wartezeit holen
