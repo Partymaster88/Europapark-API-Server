@@ -1,100 +1,48 @@
 # Europapark API Server
 
-Ein FastAPI-basierter Server für Europapark-Daten.
+FastAPI Server für Europapark-Daten mit OAuth2 Authentifizierung.
 
 ## Installation
 
-1. **Virtuelle Umgebung erstellen:**
-   ```bash
-   python -m venv venv
-   ```
-
-2. **Virtuelle Umgebung aktivieren:**
-   ```bash
-   # Linux/macOS
-   source venv/bin/activate
-   
-   # Windows
-   .\venv\Scripts\activate
-   ```
-
-3. **Abhängigkeiten installieren:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Umgebungsvariablen konfigurieren:**
-   ```bash
-   # .env.example kopieren und anpassen
-   cp .env.example .env
-   # Dann die .env Datei mit den korrekten Werten befüllen
-   ```
-
-## Konfiguration
-
-Die Anwendung wird über Umgebungsvariablen in der `.env` Datei konfiguriert:
-
-| Variable | Beschreibung |
-|----------|--------------|
-| `FB_APP_ID` | Firebase App ID |
-| `FB_API_KEY` | Firebase API Key |
-| `FB_PROJECT_ID` | Firebase Project ID |
-| `API_BASE` | Basis-URL der Ticket-API |
-| `AUTH_URL` | URL für die Authentifizierung |
-| `ENC_KEY` | Encryption Key |
-| `ENC_IV` | Encryption IV |
-| `API_USERNAME` | API Benutzername |
-| `API_PASSWORD` | API Passwort |
-| `APP_VERSION` | App Version |
-
-## Server starten
-
 ```bash
-# Entwicklungsmodus mit Auto-Reload
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-# Oder direkt mit Python
-python main.py
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
 ```
 
-## Firebase Health-Check
+## Starten
 
-Der Server führt automatisch Firebase Health-Checks durch:
+```bash
+uvicorn main:app --reload --port 8000
+```
 
-- **Bei Startup:** Initialer Health-Check beim Serverstart
-- **Täglich um 03:00 Uhr:** Automatischer Health-Check mit Secret-Aktualisierung
+## Deployment (Dokploy)
 
-Falls sich die Secrets in der `.env` Datei geändert haben, werden diese beim täglichen Check automatisch neu geladen.
-
-## API Dokumentation
-
-Nach dem Start des Servers ist die interaktive API-Dokumentation verfügbar unter:
-
-- **Swagger UI:** http://localhost:8000/docs
-- **ReDoc:** http://localhost:8000/redoc
+1. Repository verbinden
+2. Umgebungsvariablen aus `.env.example` setzen
+3. Deploy - Nixpacks erkennt `nixpacks.toml` automatisch
 
 ## Endpoints
 
-| Methode | Endpoint  | Beschreibung                    |
-|---------|-----------|--------------------------------|
-| GET     | /         | Willkommensnachricht + Firebase Status |
-| GET     | /health   | Health-Check Status (inkl. Firebase) |
-| GET     | /docs     | Swagger API Dokumentation      |
-| GET     | /redoc    | ReDoc API Dokumentation        |
+| Endpoint | Beschreibung |
+|----------|--------------|
+| `/` | Status |
+| `/health` | Health-Check |
+| `/docs` | Swagger UI |
 
-## Projektstruktur
+## Struktur
 
 ```
-Europapark-API-Server/
-├── main.py              # Hauptanwendung mit Lifespan-Management
-├── config.py            # Konfigurationsverwaltung
-├── requirements.txt     # Python-Abhängigkeiten
-├── .env                 # Umgebungsvariablen (nicht im Git)
-├── .env.example         # Beispiel-Konfiguration
-├── .gitignore           # Git-Ignores
-├── README.md            # Diese Datei
+├── main.py              # FastAPI App
+├── config.py            # Settings
+├── nixpacks.toml        # Deployment
+├── requirements.txt     # Dependencies
+├── .env                 # Konfiguration
 └── services/
-    ├── __init__.py
-    ├── firebase_health.py  # Firebase Health-Check Service
-    └── scheduler.py        # Täglicher Scheduler
+    ├── auth.py          # OAuth2
+    ├── crypto.py        # Blowfish
+    ├── firebase_*.py    # Firebase
+    ├── token_storage.py # Token Persistenz
+    └── scheduler.py     # Daily Tasks
 ```
