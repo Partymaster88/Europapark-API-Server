@@ -35,5 +35,7 @@ htmlcov/
 # Logs
 *.log
 
-# Token Storage
-data/
+# Database
+*.db
+*.sqlite
+*.sqlite3

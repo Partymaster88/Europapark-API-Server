@@ -1,21 +1,23 @@
 """
 Token Storage Service.
-Persistiert OAuth2 Tokens in einer JSON-Datei.
+Persistiert OAuth2 Tokens in der Datenbank.
 """
 
-import json
 import logging
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Optional
+
+from sqlalchemy import select
+
+from database import TokenModel, get_session
 
 logger = logging.getLogger(__name__)
 
-TOKEN_FILE = Path(__file__).parent.parent / "data" / "tokens.json"
+TOKEN_KEY = "europapark_oauth"
 
 
 class TokenData:
-    """Repräsentiert gespeicherte Token-Daten."""
+    """Repräsentiert Token-Daten."""
     
     def __init__(
         self,
@@ -32,68 +34,65 @@ class TokenData:
         self.created_at = created_at or datetime.now()
     
     def is_expired(self, buffer_seconds: int = 300) -> bool:
-        """Prüft ob der Token abgelaufen ist (mit Sicherheitspuffer)."""
+        """Prüft ob der Token abgelaufen ist."""
         expiry_with_buffer = self.expires_at - timedelta(seconds=buffer_seconds)
         return datetime.now() >= expiry_with_buffer
-    
-    def to_dict(self) -> dict:
-        """Konvertiert zu Dictionary für JSON-Serialisierung."""
-        return {
-            "access_token": self.access_token,
-            "refresh_token": self.refresh_token,
-            "token_type": self.token_type,
-            "expires_at": self.expires_at.isoformat(),
-            "created_at": self.created_at.isoformat()
-        }
-    
-    @classmethod
-    def from_dict(cls, data: dict) -> "TokenData":
-        """Erstellt TokenData aus Dictionary."""
-        return cls(
-            access_token=data["access_token"],
-            refresh_token=data.get("refresh_token"),
-            token_type=data["token_type"],
-            expires_at=datetime.fromisoformat(data["expires_at"]),
-            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else None
-        )
 
 
 class TokenStorage:
-    """Verwaltet die Persistierung von OAuth2 Tokens."""
+    """Verwaltet die Persistierung von OAuth2 Tokens in der Datenbank."""
     
-    def __init__(self, token_file: Optional[Path] = None):
-        self.token_file = token_file or TOKEN_FILE
-        self._ensure_directory()
+    def __init__(self, key: str = TOKEN_KEY):
+        self.key = key
     
-    def _ensure_directory(self):
-        """Stellt sicher, dass das Verzeichnis existiert."""
-        self.token_file.parent.mkdir(parents=True, exist_ok=True)
-    
-    def save(self, token_data: TokenData) -> None:
-        """Speichert Token-Daten in die Datei."""
-        try:
-            with open(self.token_file, "w", encoding="utf-8") as f:
-                json.dump(token_data.to_dict(), f, indent=2)
+    async def save(self, token_data: TokenData) -> None:
+        """Speichert Token-Daten in der Datenbank."""
+        async with get_session() as session:
+            result = await session.execute(
+                select(TokenModel).where(TokenModel.key == self.key)
+            )
+            existing = result.scalar_one_or_none()
+            
+            if existing:
+                existing.access_token = token_data.access_token
+                existing.refresh_token = token_data.refresh_token
+                existing.token_type = token_data.token_type
+                existing.expires_at = token_data.expires_at
+                existing.updated_at = datetime.now()
+            else:
+                new_token = TokenModel(
+                    key=self.key,
+                    access_token=token_data.access_token,
+                    refresh_token=token_data.refresh_token,
+                    token_type=token_data.token_type,
+                    expires_at=token_data.expires_at,
+                    created_at=token_data.created_at
+                )
+                session.add(new_token)
+            
+            await session.commit()
             logger.info(f"Token gespeichert. Gültig bis: {token_data.expires_at}")
-        except Exception as e:
-            logger.error(f"Fehler beim Speichern des Tokens: {e}")
-            raise
     
-    def load(self) -> Optional[TokenData]:
-        """Lädt Token-Daten aus der Datei."""
-        if not self.token_file.exists():
-            logger.debug("Keine gespeicherte Token-Datei gefunden.")
-            return None
-        
-        try:
-            with open(self.token_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            token_data = TokenData.from_dict(data)
-            logger.debug(f"Token geladen. Gültig bis: {token_data.expires_at}")
-            return token_data
-        except Exception as e:
-            logger.error(f"Fehler beim Laden des Tokens: {e}")
-            return None
+    async def load(self) -> Optional[TokenData]:
+        """Lädt Token-Daten aus der Datenbank."""
+        async with get_session() as session:
+            result = await session.execute(
+                select(TokenModel).where(TokenModel.key == self.key)
+            )
+            token = result.scalar_one_or_none()
+            
+            if not token:
+                logger.debug("Kein Token in Datenbank gefunden.")
+                return None
+            
+            logger.debug(f"Token geladen. Gültig bis: {token.expires_at}")
+            return TokenData(
+                access_token=token.access_token,
+                refresh_token=token.refresh_token,
+                token_type=token.token_type,
+                expires_at=token.expires_at,
+                created_at=token.created_at
+            )
 
 
 _token_storage: Optional[TokenStorage] = None

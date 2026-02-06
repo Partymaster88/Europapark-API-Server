@@ -1,6 +1,5 @@
 """
 Authentifizierungs-Service für OAuth2 Token Management.
-Verwaltet Token-Anforderung, Refresh und Speicherung.
 """
 
 import asyncio
@@ -18,17 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 class AuthService:
-    """
-    Verwaltet die OAuth2-Authentifizierung mit CIDAAS/MackOne.
+    """Verwaltet die OAuth2-Authentifizierung."""
     
-    Features:
-    - Automatische Token-Anforderung bei Startup
-    - Token-Refresh vor Ablauf
-    - Persistente Token-Speicherung
-    - Automatischer Background-Refresh
-    """
-    
-    REFRESH_BUFFER_SECONDS = 600  # Token wird 10 Minuten vor Ablauf erneuert
+    REFRESH_BUFFER_SECONDS = 600
     MIN_REFRESH_INTERVAL_SECONDS = 60
     
     def __init__(
@@ -45,32 +36,26 @@ class AuthService:
     
     @property
     def is_authenticated(self) -> bool:
-        """Prüft ob eine gültige Authentifizierung vorliegt."""
         if self._current_token is None:
             return False
         return not self._current_token.is_expired(self.REFRESH_BUFFER_SECONDS)
     
     @property
     def access_token(self) -> Optional[str]:
-        """Gibt den aktuellen Access Token zurück."""
         if self._current_token and not self._current_token.is_expired():
             return self._current_token.access_token
         return None
     
     def get_auth_header(self) -> dict:
-        """Gibt den Authorization Header für API-Requests zurück."""
         if not self.access_token:
-            raise RuntimeError("Nicht authentifiziert. Token nicht verfügbar.")
+            raise RuntimeError("Nicht authentifiziert.")
         return {"Authorization": f"Bearer {self.access_token}"}
     
     async def initialize(self) -> bool:
-        """
-        Initialisiert den Auth-Service.
-        Prüft auf gespeicherte Tokens, fordert bei Bedarf neue an.
-        """
+        """Initialisiert den Auth-Service."""
         logger.info("Initialisiere Authentifizierung...")
         
-        saved_token = self.token_storage.load()
+        saved_token = await self.token_storage.load()
         
         if saved_token and not saved_token.is_expired(self.REFRESH_BUFFER_SECONDS):
             logger.info("Gültiger gespeicherter Token gefunden.")
@@ -85,7 +70,7 @@ class AuthService:
                 self._start_refresh_scheduler()
                 return True
             except Exception as e:
-                logger.warning(f"Token Refresh fehlgeschlagen: {e}. Fordere neuen Token an.")
+                logger.warning(f"Token Refresh fehlgeschlagen: {e}")
         
         try:
             await self._request_new_token()
@@ -96,7 +81,6 @@ class AuthService:
             return False
     
     async def _request_new_token(self) -> None:
-        """Fordert einen neuen OAuth2 Token an."""
         logger.info("Fordere neuen OAuth2 Token an...")
         
         credentials = await self.firebase_config.get_decrypted_credentials()
@@ -109,11 +93,10 @@ class AuthService:
         )
         
         self._current_token = token_data
-        self.token_storage.save(token_data)
+        await self.token_storage.save(token_data)
         logger.info(f"Neuer Token erhalten. Gültig bis: {token_data.expires_at}")
     
     async def _refresh_token(self, refresh_token: str) -> None:
-        """Erneuert den Access Token mit einem Refresh Token."""
         logger.info("Erneuere Access Token...")
         
         credentials = await self.firebase_config.get_decrypted_credentials()
@@ -125,7 +108,7 @@ class AuthService:
         )
         
         self._current_token = token_data
-        self.token_storage.save(token_data)
+        await self.token_storage.save(token_data)
         logger.info(f"Token erneuert. Gültig bis: {token_data.expires_at}")
     
     async def _oauth2_token_request(
@@ -135,11 +118,7 @@ class AuthService:
         client_secret: Optional[str] = None,
         refresh_token: Optional[str] = None
     ) -> TokenData:
-        """Führt einen OAuth2 Token Request durch."""
-        payload = {
-            "grant_type": grant_type,
-            "client_id": client_id
-        }
+        payload = {"grant_type": grant_type, "client_id": client_id}
         
         if client_secret:
             payload["client_secret"] = client_secret
@@ -180,21 +159,18 @@ class AuthService:
         )
     
     def _start_refresh_scheduler(self) -> None:
-        """Startet den automatischen Token-Refresh Scheduler."""
         if self._refresh_task and not self._refresh_task.done():
             return
         self._refresh_task = asyncio.create_task(self._refresh_loop())
         logger.info("Token Refresh Scheduler gestartet.")
     
     def _stop_refresh_scheduler(self) -> None:
-        """Stoppt den Token-Refresh Scheduler."""
         if self._refresh_task:
             self._refresh_task.cancel()
             self._refresh_task = None
             logger.info("Token Refresh Scheduler gestoppt.")
     
     async def _refresh_loop(self) -> None:
-        """Background-Loop für automatischen Token-Refresh."""
         while True:
             try:
                 if self._current_token is None:
@@ -210,18 +186,13 @@ class AuthService:
                     self.MIN_REFRESH_INTERVAL_SECONDS
                 )
                 
-                logger.debug(
-                    f"Nächster Token-Refresh in {sleep_time / 60:.1f} Minuten. "
-                    f"Token läuft ab um {self._current_token.expires_at}"
-                )
-                
                 await asyncio.sleep(sleep_time)
                 
                 if self._current_token.refresh_token:
                     try:
                         await self._refresh_token(self._current_token.refresh_token)
                     except Exception as e:
-                        logger.warning(f"Refresh fehlgeschlagen: {e}. Fordere neuen Token an.")
+                        logger.warning(f"Refresh fehlgeschlagen: {e}")
                         await self._request_new_token()
                 else:
                     await self._request_new_token()
@@ -234,19 +205,12 @@ class AuthService:
                 await asyncio.sleep(60)
     
     async def shutdown(self) -> None:
-        """Beendet den Auth-Service sauber."""
         self._stop_refresh_scheduler()
         logger.info("Auth-Service heruntergefahren.")
     
     def get_status(self) -> dict:
-        """Gibt den aktuellen Authentifizierungsstatus zurück."""
         if self._current_token is None:
-            return {
-                "authenticated": False,
-                "token_present": False,
-                "expires_at": None,
-                "is_expired": True
-            }
+            return {"authenticated": False, "token_present": False, "expires_at": None, "is_expired": True}
         
         return {
             "authenticated": self.is_authenticated,
@@ -261,7 +225,6 @@ _auth_service: Optional[AuthService] = None
 
 
 def get_auth_service() -> AuthService:
-    """Gibt die globale AuthService-Instanz zurück."""
     global _auth_service
     if _auth_service is None:
         _auth_service = AuthService()
@@ -269,12 +232,10 @@ def get_auth_service() -> AuthService:
 
 
 async def initialize_auth() -> bool:
-    """Initialisiert den globalen Auth-Service."""
     return await get_auth_service().initialize()
 
 
 async def shutdown_auth() -> None:
-    """Beendet den globalen Auth-Service."""
     global _auth_service
     if _auth_service:
         await _auth_service.shutdown()

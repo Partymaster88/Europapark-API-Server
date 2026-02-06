@@ -1,6 +1,5 @@
 """
 Konfigurationsmodul für die Europapark API.
-Lädt Umgebungsvariablen und stellt sie als Pydantic Settings bereit.
 """
 
 from functools import lru_cache
@@ -9,6 +8,9 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     """Anwendungskonfiguration aus Umgebungsvariablen."""
+
+    # Datenbank
+    database_url: str = "sqlite:///./data.db"
 
     # Firebase Konfiguration
     fb_app_id: str
@@ -23,7 +25,7 @@ class Settings(BaseSettings):
     enc_key: str
     enc_iv: str
 
-    # API Credentials (Fallback wenn Remote Config nicht verfügbar)
+    # API Credentials (Fallback)
     user_key: str
     pass_key: str
     api_username: str
@@ -44,6 +46,6 @@ def get_settings() -> Settings:
 
 
 def refresh_settings() -> Settings:
-    """Aktualisiert die Settings durch Neuladen der .env Datei."""
+    """Aktualisiert die Settings."""
     get_settings.cache_clear()
     return get_settings()

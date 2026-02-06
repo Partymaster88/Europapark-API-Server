@@ -1,6 +1,5 @@
 """
 Europapark API Server
-Ein FastAPI-basierter Server für Europapark-Daten.
 """
 
 import logging
@@ -10,11 +9,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
+from database import init_database, close_database
 from services.auth import get_auth_service, initialize_auth, shutdown_auth
 from services.firebase_health import check_firebase_health, get_firebase_status
 from services.scheduler import start_scheduler, stop_scheduler
 
-# Logging konfigurieren
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -24,76 +23,44 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Lifecycle-Manager für die FastAPI-Anwendung.
-    
-    Startup:
-    - Lädt die Konfiguration
-    - Führt initialen Firebase Health-Check durch
-    - Initialisiert die OAuth2-Authentifizierung
-    - Startet den täglichen Scheduler
-    
-    Shutdown:
-    - Stoppt den Auth-Service
-    - Stoppt den Scheduler
-    """
-    # Startup
+    """Lifecycle-Manager für die FastAPI-Anwendung."""
     logger.info("Starte Europapark API Server...")
     
-    # Konfiguration laden und validieren
-    try:
-        settings = get_settings()
-        logger.info(f"Konfiguration geladen. Firebase Project: {settings.fb_project_id}")
-    except Exception as e:
-        logger.error(f"Fehler beim Laden der Konfiguration: {e}")
-        raise
+    # Konfiguration laden
+    settings = get_settings()
+    logger.info(f"Konfiguration geladen. Firebase Project: {settings.fb_project_id}")
     
-    # Initialer Firebase Health-Check
-    logger.info("Führe initialen Firebase Health-Check durch...")
+    # Datenbank initialisieren
+    await init_database()
+    
+    # Firebase Health-Check
     status = await check_firebase_health()
-    
     if status.is_healthy:
-        logger.info(
-            f"Firebase Health-Check erfolgreich. "
-            f"Response Time: {status.response_time_ms:.2f}ms"
-        )
+        logger.info(f"Firebase Health-Check erfolgreich. Response Time: {status.response_time_ms:.2f}ms")
     else:
-        logger.warning(
-            f"Firebase Health-Check fehlgeschlagen: {status.last_error}. "
-            f"Server wird trotzdem gestartet."
-        )
+        logger.warning(f"Firebase Health-Check fehlgeschlagen: {status.last_error}")
     
-    # OAuth2 Authentifizierung initialisieren
-    logger.info("Initialisiere OAuth2 Authentifizierung...")
+    # OAuth2 Authentifizierung
     auth_success = await initialize_auth()
-    
     if auth_success:
         auth_service = get_auth_service()
-        logger.info(
-            f"Authentifizierung erfolgreich. "
-            f"Token gültig bis: {auth_service.get_status().get('expires_at', 'unbekannt')}"
-        )
+        logger.info(f"Authentifizierung erfolgreich. Token gültig bis: {auth_service.get_status().get('expires_at')}")
     else:
-        logger.warning(
-            "Authentifizierung fehlgeschlagen. "
-            "API-Anfragen werden nicht funktionieren."
-        )
+        logger.warning("Authentifizierung fehlgeschlagen.")
     
-    # Täglichen Scheduler starten
     start_scheduler()
-    
-    logger.info("Europapark API Server erfolgreich gestartet.")
+    logger.info("Server erfolgreich gestartet.")
     
     yield
     
     # Shutdown
-    logger.info("Fahre Europapark API Server herunter...")
+    logger.info("Fahre Server herunter...")
     await shutdown_auth()
     stop_scheduler()
+    await close_database()
     logger.info("Server heruntergefahren.")
 
 
-# FastAPI App initialisieren
 app = FastAPI(
     title="Europapark API",
     description="API Server für Europapark-Daten",
@@ -101,7 +68,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS Middleware konfigurieren
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -113,7 +79,6 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    """Root-Endpoint - gibt eine Willkommensnachricht zurück."""
     firebase_status = get_firebase_status()
     auth_service = get_auth_service()
     
@@ -128,12 +93,10 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health-Check Endpoint mit Firebase- und Auth-Status."""
     firebase_status = get_firebase_status()
     auth_service = get_auth_service()
     auth_status = auth_service.get_status()
     
-    # Server ist healthy wenn Firebase erreichbar UND authentifiziert
     is_healthy = firebase_status.is_healthy and auth_status.get("authenticated", False)
     
     return {
@@ -145,5 +108,4 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
