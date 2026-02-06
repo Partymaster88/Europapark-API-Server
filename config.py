@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     enc_key: str
     enc_iv: str
 
-    # API Credentials
+    # API Credentials (Fallback wenn Remote Config nicht verfügbar)
     user_key: str
     pass_key: str
     api_username: str
@@ -39,25 +39,11 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    """
-    Gibt die gecachte Settings-Instanz zurück.
-    Verwendet lru_cache für Performance.
-    """
-    return get_settings_uncached()
-
-
-def get_settings_uncached() -> Settings:
-    """
-    Lädt die Settings neu ohne Cache.
-    Verwendet für Secret-Aktualisierungen.
-    """
+    """Gibt die gecachte Settings-Instanz zurück."""
     return Settings()
 
 
 def refresh_settings() -> Settings:
-    """
-    Aktualisiert die Settings durch Neuladen der .env Datei.
-    Löscht den Cache und lädt neu.
-    """
+    """Aktualisiert die Settings durch Neuladen der .env Datei."""
     get_settings.cache_clear()
     return get_settings()

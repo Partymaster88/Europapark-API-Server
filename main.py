@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
+from services.auth import get_auth_service, initialize_auth, shutdown_auth
 from services.firebase_health import check_firebase_health, get_firebase_status
 from services.scheduler import start_scheduler, stop_scheduler
 
@@ -29,9 +30,11 @@ async def lifespan(app: FastAPI):
     Startup:
     - Lädt die Konfiguration
     - Führt initialen Firebase Health-Check durch
+    - Initialisiert die OAuth2-Authentifizierung
     - Startet den täglichen Scheduler
     
     Shutdown:
+    - Stoppt den Auth-Service
     - Stoppt den Scheduler
     """
     # Startup
@@ -60,6 +63,22 @@ async def lifespan(app: FastAPI):
             f"Server wird trotzdem gestartet."
         )
     
+    # OAuth2 Authentifizierung initialisieren
+    logger.info("Initialisiere OAuth2 Authentifizierung...")
+    auth_success = await initialize_auth()
+    
+    if auth_success:
+        auth_service = get_auth_service()
+        logger.info(
+            f"Authentifizierung erfolgreich. "
+            f"Token gültig bis: {auth_service.get_status().get('expires_at', 'unbekannt')}"
+        )
+    else:
+        logger.warning(
+            "Authentifizierung fehlgeschlagen. "
+            "API-Anfragen werden nicht funktionieren."
+        )
+    
     # Täglichen Scheduler starten
     start_scheduler()
     
@@ -69,6 +88,7 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Fahre Europapark API Server herunter...")
+    await shutdown_auth()
     stop_scheduler()
     logger.info("Server heruntergefahren.")
 
@@ -95,23 +115,31 @@ app.add_middleware(
 async def root():
     """Root-Endpoint - gibt eine Willkommensnachricht zurück."""
     firebase_status = get_firebase_status()
+    auth_service = get_auth_service()
     
     return {
         "message": "Willkommen zur Europapark API",
         "version": "1.0.0",
         "docs": "/docs",
         "firebase_status": firebase_status.to_dict(),
+        "auth_status": auth_service.get_status(),
     }
 
 
 @app.get("/health")
 async def health_check():
-    """Health-Check Endpoint mit Firebase-Status."""
+    """Health-Check Endpoint mit Firebase- und Auth-Status."""
     firebase_status = get_firebase_status()
+    auth_service = get_auth_service()
+    auth_status = auth_service.get_status()
+    
+    # Server ist healthy wenn Firebase erreichbar UND authentifiziert
+    is_healthy = firebase_status.is_healthy and auth_status.get("authenticated", False)
     
     return {
-        "status": "healthy" if firebase_status.is_healthy else "degraded",
+        "status": "healthy" if is_healthy else "degraded",
         "firebase": firebase_status.to_dict(),
+        "auth": auth_status,
     }
 
 
