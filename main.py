@@ -12,7 +12,6 @@ from config import get_settings
 from database import init_database, close_database
 from routers.attractions import router as attractions_router
 from routers.openingtimes import router as openingtimes_router
-from routers.raw import router as raw_router
 from routers.restaurants import router as restaurants_router
 from routers.seasons import router as seasons_router
 from routers.services import router as services_router
@@ -94,7 +93,6 @@ app.add_middleware(
 )
 
 # Router registrieren
-app.include_router(raw_router)
 app.include_router(waittimes_router)
 app.include_router(showtimes_router)
 app.include_router(openingtimes_router)
@@ -108,28 +106,10 @@ app.include_router(services_router)
 
 @app.get("/", tags=["API"])
 async def api_info():
-    """API-Übersicht und verfügbare Endpoints."""
+    """API-Informationen."""
     return {
         "api": "Europapark API",
-        "version": "1.0.0",
-        "endpoints": {
-            "times": {
-                "waittimes": "/times/waittimes",
-                "showtimes": "/times/showtimes",
-                "openingtimes": "/times/openingtimes",
-                "seasons": "/times/seasons"
-            },
-            "info": {
-                "attractions": "/info/attractions",
-                "shows": "/info/shows",
-                "shops": "/info/shops",
-                "restaurants": "/info/restaurants",
-                "services": "/info/services"
-            },
-            "raw": "/raw/{endpoint}",
-            "health": "/health",
-            "docs": "/docs"
-        }
+        "version": "1.0.0"
     }
 
 
