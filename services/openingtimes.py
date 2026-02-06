@@ -35,13 +35,22 @@ async def get_opening_times() -> Optional[OpeningTimesInfo]:
     
     raw = data["data"]
     
+    def extract_time(dt_str: str | None) -> str | None:
+        """Extrahiert nur die Uhrzeit aus ISO-String."""
+        if not dt_str:
+            return None
+        try:
+            return dt_str[11:16]  # HH:MM
+        except (IndexError, TypeError):
+            return None
+    
     # Today
     today = None
     if raw.get("today"):
         today = OpeningTime(
             date=raw["today"].get("date", "")[:10],
-            start=raw["today"].get("start"),
-            end=raw["today"].get("end")
+            start=extract_time(raw["today"].get("start")),
+            end=extract_time(raw["today"].get("end"))
         )
     
     # Tomorrow
@@ -49,8 +58,8 @@ async def get_opening_times() -> Optional[OpeningTimesInfo]:
     if raw.get("tomorrow"):
         tomorrow = OpeningTime(
             date=raw["tomorrow"].get("date", "")[:10],
-            start=raw["tomorrow"].get("start"),
-            end=raw["tomorrow"].get("end")
+            start=extract_time(raw["tomorrow"].get("start")),
+            end=extract_time(raw["tomorrow"].get("end"))
         )
     
     # Next opening
@@ -58,14 +67,14 @@ async def get_opening_times() -> Optional[OpeningTimesInfo]:
     if raw.get("next"):
         next_open = OpeningTime(
             date=raw["next"].get("date", "")[:10],
-            start=raw["next"].get("start"),
-            end=raw["next"].get("end")
+            start=extract_time(raw["next"].get("start")),
+            end=extract_time(raw["next"].get("end"))
         )
     
-    # Message
+    # Message (long)
     message = None
     if raw.get("messages") and raw["messages"]:
-        message = raw["messages"][0].get("short")
+        message = raw["messages"][0].get("long")
     
     return OpeningTimesInfo(
         today=today,
