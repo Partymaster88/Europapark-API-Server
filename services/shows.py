@@ -1,7 +1,4 @@
-"""
-Shows Service.
-Processes and formats show information from POI data.
-"""
+"""Shows Service."""
 
 import logging
 from typing import Optional
@@ -15,15 +12,23 @@ logger = logging.getLogger(__name__)
 
 
 class Location(BaseModel):
-    """Location."""
     latitude: float
     longitude: float
 
 
 class ImageUrls(BaseModel):
-    """Image URLs."""
     small: Optional[str] = None
     medium: Optional[str] = None
+
+
+class ShowListItem(BaseModel):
+    """Compact show for list view."""
+    id: int
+    name: str
+    type: str = "show"
+    area_id: Optional[int] = None
+    location: Optional[Location] = None
+    icon: Optional[str] = None
 
 
 class ShowInfo(BaseModel):
@@ -40,21 +45,19 @@ class ShowInfo(BaseModel):
 
 
 def extract_image_urls(image_data: Optional[dict]) -> Optional[ImageUrls]:
-    """Extract image URLs from POI data."""
     if not image_data:
         return None
-    
-    return ImageUrls(
-        small=image_data.get("small"),
-        medium=image_data.get("medium")
-    )
+    return ImageUrls(small=image_data.get("small"), medium=image_data.get("medium"))
+
+
+def extract_location(poi: dict) -> Optional[Location]:
+    if poi.get("latitude") and poi.get("longitude"):
+        return Location(latitude=poi["latitude"], longitude=poi["longitude"])
+    return None
 
 
 async def get_all_shows_from_pois() -> list[dict]:
-    """
-    Get all shows from POI data (showlocation -> shows).
-    Returns list of (show, location_poi) tuples.
-    """
+    """Get all shows from POI data."""
     cache = get_cache_service()
     pois_data = await cache.load(CACHE_KEYS["pois"])
     
@@ -64,16 +67,11 @@ async def get_all_shows_from_pois() -> list[dict]:
     shows = []
     for poi in pois_data["data"].get("pois", []):
         scopes = poi.get("scopes", [])
-        
-        # Europapark only (no Rulantica)
         if "europapark" not in scopes:
             continue
         
         for show in poi.get("shows", []):
-            shows.append({
-                "show": show,
-                "location_poi": poi
-            })
+            shows.append({"show": show, "location_poi": poi})
     
     return shows
 
@@ -81,51 +79,37 @@ async def get_all_shows_from_pois() -> list[dict]:
 async def get_show_by_id(show_id: int) -> Optional[dict]:
     """Get raw show data by ID."""
     all_shows = await get_all_shows_from_pois()
-    
     for item in all_shows:
         if item["show"].get("id") == show_id:
             return item
-    
     return None
 
 
 async def get_show_info(show_id: int) -> Optional[ShowInfo]:
-    """Get formatted show information."""
+    """Get full show details."""
     item = await get_show_by_id(show_id)
-    
     if not item:
         return None
     
     show = item["show"]
     location_poi = item["location_poi"]
-    
     showtimes = await get_showtime_by_id(show_id)
-    
-    location = None
-    if location_poi.get("latitude") and location_poi.get("longitude"):
-        location = Location(
-            latitude=location_poi["latitude"],
-            longitude=location_poi["longitude"]
-        )
-    
-    image = extract_image_urls(show.get("image"))
-    icon = show.get("icon", {}).get("small") if show.get("icon") else None
     
     return ShowInfo(
         id=show["id"],
         name=show.get("name", "Unknown"),
         description=show.get("excerpt"),
         location_name=location_poi.get("name"),
-        location=location,
+        location=extract_location(location_poi),
         duration=show.get("duration"),
-        image=image,
-        icon=icon,
+        image=extract_image_urls(show.get("image")),
+        icon=show.get("icon", {}).get("small") if show.get("icon") else None,
         showtimes=showtimes
     )
 
 
-async def get_all_shows() -> list[ShowInfo]:
-    """Get all shows with basic info."""
+async def get_all_shows() -> list[ShowListItem]:
+    """Get all shows (compact list)."""
     all_shows = await get_all_shows_from_pois()
     
     results = []
@@ -133,25 +117,13 @@ async def get_all_shows() -> list[ShowInfo]:
         show = item["show"]
         location_poi = item["location_poi"]
         
-        showtimes = await get_showtime_by_id(show["id"])
-        
-        location = None
-        if location_poi.get("latitude") and location_poi.get("longitude"):
-            location = Location(
-                latitude=location_poi["latitude"],
-                longitude=location_poi["longitude"]
-            )
-        
-        results.append(ShowInfo(
+        results.append(ShowListItem(
             id=show["id"],
             name=show.get("name", "Unknown"),
-            description=show.get("excerpt"),
-            location_name=location_poi.get("name"),
-            location=location,
-            duration=show.get("duration"),
-            image=extract_image_urls(show.get("image")),
-            icon=show.get("icon", {}).get("small") if show.get("icon") else None,
-            showtimes=showtimes
+            type="show",
+            area_id=location_poi.get("areaId"),
+            location=extract_location(location_poi),
+            icon=show.get("icon", {}).get("small") if show.get("icon") else None
         ))
     
     return results

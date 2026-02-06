@@ -1,7 +1,4 @@
-"""
-POI Service.
-Generic service for various POI types (shops, restaurants, services).
-"""
+"""POI Service."""
 
 import logging
 from typing import Optional
@@ -14,19 +11,27 @@ logger = logging.getLogger(__name__)
 
 
 class Location(BaseModel):
-    """Location."""
     latitude: float
     longitude: float
 
 
 class ImageUrls(BaseModel):
-    """Image URLs."""
     small: Optional[str] = None
     medium: Optional[str] = None
 
 
+class POIListItem(BaseModel):
+    """Compact POI for list view."""
+    id: int
+    name: str
+    type: str
+    area_id: Optional[int] = None
+    location: Optional[Location] = None
+    icon: Optional[str] = None
+
+
 class POIInfo(BaseModel):
-    """POI information."""
+    """Full POI information."""
     id: int
     name: str
     description: Optional[str] = None
@@ -38,18 +43,19 @@ class POIInfo(BaseModel):
 
 
 def extract_image_urls(image_data: Optional[dict]) -> Optional[ImageUrls]:
-    """Extract image URLs from POI data."""
     if not image_data:
         return None
-    
-    return ImageUrls(
-        small=image_data.get("small"),
-        medium=image_data.get("medium")
-    )
+    return ImageUrls(small=image_data.get("small"), medium=image_data.get("medium"))
 
 
-async def get_pois_by_type(poi_type: str) -> list[POIInfo]:
-    """Get all POIs of a specific type (Europapark only)."""
+def extract_location(poi: dict) -> Optional[Location]:
+    if poi.get("latitude") and poi.get("longitude"):
+        return Location(latitude=poi["latitude"], longitude=poi["longitude"])
+    return None
+
+
+async def get_pois_by_type(poi_type: str) -> list[POIListItem]:
+    """Get all POIs of a type (compact list)."""
     cache = get_cache_service()
     pois_data = await cache.load(CACHE_KEYS["pois"])
     
@@ -59,26 +65,15 @@ async def get_pois_by_type(poi_type: str) -> list[POIInfo]:
     results = []
     for poi in pois_data["data"].get("pois", []):
         scopes = poi.get("scopes", [])
-        
-        # Europapark only and matching type
         if poi.get("type") != poi_type or "europapark" not in scopes:
             continue
         
-        location = None
-        if poi.get("latitude") and poi.get("longitude"):
-            location = Location(
-                latitude=poi["latitude"],
-                longitude=poi["longitude"]
-            )
-        
-        results.append(POIInfo(
+        results.append(POIListItem(
             id=poi["id"],
             name=poi.get("name", "Unknown"),
-            description=poi.get("excerpt"),
             type=poi.get("type"),
             area_id=poi.get("areaId"),
-            location=location,
-            image=extract_image_urls(poi.get("image")),
+            location=extract_location(poi),
             icon=poi.get("icon", {}).get("small") if poi.get("icon") else None
         ))
     
@@ -86,7 +81,7 @@ async def get_pois_by_type(poi_type: str) -> list[POIInfo]:
 
 
 async def get_poi_by_id_and_type(poi_id: int, poi_type: str) -> Optional[POIInfo]:
-    """Get a POI by ID and type."""
+    """Get full POI details by ID and type."""
     cache = get_cache_service()
     pois_data = await cache.load(CACHE_KEYS["pois"])
     
@@ -95,34 +90,23 @@ async def get_poi_by_id_and_type(poi_id: int, poi_type: str) -> Optional[POIInfo
     
     for poi in pois_data["data"].get("pois", []):
         scopes = poi.get("scopes", [])
-        
         if (poi.get("id") == poi_id and 
             poi.get("type") == poi_type and 
             "europapark" in scopes):
-            
-            location = None
-            if poi.get("latitude") and poi.get("longitude"):
-                location = Location(
-                    latitude=poi["latitude"],
-                    longitude=poi["longitude"]
-                )
-            
             return POIInfo(
                 id=poi["id"],
                 name=poi.get("name", "Unknown"),
                 description=poi.get("excerpt"),
                 type=poi.get("type"),
                 area_id=poi.get("areaId"),
-                location=location,
+                location=extract_location(poi),
                 image=extract_image_urls(poi.get("image")),
                 icon=poi.get("icon", {}).get("small") if poi.get("icon") else None
             )
-    
     return None
 
 
-# Convenience functions for specific types
-async def get_all_shops() -> list[POIInfo]:
+async def get_all_shops() -> list[POIListItem]:
     return await get_pois_by_type("shopping")
 
 
@@ -130,7 +114,7 @@ async def get_shop_by_id(shop_id: int) -> Optional[POIInfo]:
     return await get_poi_by_id_and_type(shop_id, "shopping")
 
 
-async def get_all_restaurants() -> list[POIInfo]:
+async def get_all_restaurants() -> list[POIListItem]:
     return await get_pois_by_type("gastronomy")
 
 
@@ -138,7 +122,7 @@ async def get_restaurant_by_id(restaurant_id: int) -> Optional[POIInfo]:
     return await get_poi_by_id_and_type(restaurant_id, "gastronomy")
 
 
-async def get_all_services() -> list[POIInfo]:
+async def get_all_services() -> list[POIListItem]:
     return await get_pois_by_type("service")
 
 
