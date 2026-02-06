@@ -106,17 +106,30 @@ app.include_router(restaurants_router)
 app.include_router(services_router)
 
 
-@app.get("/")
-async def root():
-    firebase_status = get_firebase_status()
-    auth_service = get_auth_service()
-    
+@app.get("/", tags=["API"])
+async def api_info():
+    """API-Übersicht und verfügbare Endpoints."""
     return {
-        "message": "Willkommen zur Europapark API",
+        "api": "Europapark API",
         "version": "1.0.0",
-        "docs": "/docs",
-        "firebase_status": firebase_status.to_dict(),
-        "auth_status": auth_service.get_status(),
+        "endpoints": {
+            "times": {
+                "waittimes": "/times/waittimes",
+                "showtimes": "/times/showtimes",
+                "openingtimes": "/times/openingtimes",
+                "seasons": "/times/seasons"
+            },
+            "info": {
+                "attractions": "/info/attractions",
+                "shows": "/info/shows",
+                "shops": "/info/shops",
+                "restaurants": "/info/restaurants",
+                "services": "/info/services"
+            },
+            "raw": "/raw/{endpoint}",
+            "health": "/health",
+            "docs": "/docs"
+        }
     }
 
 
