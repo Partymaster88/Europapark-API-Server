@@ -1,0 +1,151 @@
+"""
+Waittimes Service.
+Verarbeitet Wartezeiten und verknüpft sie mit POI-Daten.
+"""
+
+import logging
+from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel
+
+from services.cache import get_cache_service, CACHE_KEYS
+
+logger = logging.getLogger(__name__)
+
+
+class AttractionStatus(str, Enum):
+    """Status einer Attraktion."""
+    OPERATIONAL = "operational"
+    CLOSED = "closed"
+    REFURBISHMENT = "refurbishment"
+    WEATHER = "weather"
+    ICE = "ice"
+    DOWN = "down"
+    VQUEUE_TEMP_FULL = "vqueue_temporarily_full"
+    VQUEUE_FULL = "vqueue_full"
+    UNKNOWN = "unknown"
+
+
+class WaitTimeEntry(BaseModel):
+    """Wartezeit-Eintrag."""
+    id: int
+    code: int
+    name: str
+    time: Optional[int]
+    status: AttractionStatus
+
+
+def get_status_from_time(time_value: int) -> tuple[AttractionStatus, Optional[int]]:
+    """
+    Ermittelt Status und bereinigte Wartezeit aus dem time-Wert.
+    
+    Zeit-Codes:
+    - <= 90: Wartezeit in Minuten
+    - 91: 90+ Minuten
+    - 222: Wartung/Refurbishment
+    - 333: Geschlossen
+    - 444: Wetter
+    - 555: Eis
+    - 666: Virtual Queue temporär voll
+    - 777: Virtual Queue voll
+    - 999: Störung/Down
+    """
+    if time_value <= 90:
+        return AttractionStatus.OPERATIONAL, time_value
+    elif time_value == 91:
+        return AttractionStatus.OPERATIONAL, 90  # 90+ Minuten
+    elif time_value == 222:
+        return AttractionStatus.REFURBISHMENT, None
+    elif time_value == 333:
+        return AttractionStatus.CLOSED, None
+    elif time_value == 444:
+        return AttractionStatus.WEATHER, None
+    elif time_value == 555:
+        return AttractionStatus.ICE, None
+    elif time_value == 666:
+        return AttractionStatus.VQUEUE_TEMP_FULL, None
+    elif time_value == 777:
+        return AttractionStatus.VQUEUE_FULL, None
+    elif time_value == 999:
+        return AttractionStatus.DOWN, None
+    else:
+        return AttractionStatus.UNKNOWN, None
+
+
+async def get_poi_name_map() -> dict[int, dict]:
+    """
+    Erstellt ein Mapping von POI-Code zu POI-Daten.
+    """
+    cache = get_cache_service()
+    pois_data = await cache.load(CACHE_KEYS["pois"])
+    
+    if not pois_data or "data" not in pois_data:
+        return {}
+    
+    poi_map = {}
+    for poi in pois_data["data"].get("pois", []):
+        code = poi.get("code")
+        if code:
+            poi_map[code] = {
+                "id": poi.get("id"),
+                "name": poi.get("name", "Unbekannt"),
+                "type": poi.get("type"),
+            }
+    
+    return poi_map
+
+
+async def get_processed_waittimes() -> list[WaitTimeEntry]:
+    """
+    Holt verarbeitete Wartezeiten mit Namen und Status.
+    """
+    cache = get_cache_service()
+    
+    # Wartezeiten laden
+    waittimes_data = await cache.load(CACHE_KEYS["waittimes"])
+    if not waittimes_data or "data" not in waittimes_data:
+        return []
+    
+    # POI-Namen-Mapping laden
+    poi_map = await get_poi_name_map()
+    
+    results = []
+    for entry in waittimes_data["data"]:
+        code = entry.get("code")
+        time_value = entry.get("time", 0)
+        
+        # POI-Daten holen
+        poi_info = poi_map.get(code, {})
+        poi_id = poi_info.get("id")
+        poi_name = poi_info.get("name", f"Attraktion #{code}")
+        
+        # Nur Attraktionen mit bekannter ID
+        if poi_id is None:
+            continue
+        
+        # Status und bereinigte Zeit ermitteln
+        status, clean_time = get_status_from_time(time_value)
+        
+        results.append(WaitTimeEntry(
+            id=poi_id,
+            code=code,
+            name=poi_name,
+            time=clean_time,
+            status=status
+        ))
+    
+    return results
+
+
+async def get_waittime_by_id(attraction_id: int) -> Optional[WaitTimeEntry]:
+    """
+    Holt Wartezeit für eine bestimmte Attraktion.
+    """
+    waittimes = await get_processed_waittimes()
+    
+    for entry in waittimes:
+        if entry.id == attraction_id:
+            return entry
+    
+    return None
