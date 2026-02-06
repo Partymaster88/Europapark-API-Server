@@ -29,7 +29,7 @@ async def attractions():
     }
 
 
-@router.get("/attrinfo/{attraction_id}")
+@router.get("/attractions/{attraction_id}")
 async def attraction_info(attraction_id: int):
     """
     Vollständige Informationen zu einer Attraktion.
