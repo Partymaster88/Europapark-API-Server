@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from services.waittimes import get_processed_waittimes, get_waittime_by_id
 
-router = APIRouter(tags=["Waittimes"])
+router = APIRouter(prefix="/times", tags=["Times"])
 
 
 @router.get("/waittimes")

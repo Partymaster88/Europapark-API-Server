@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from services.showtimes import get_processed_showtimes, get_showtime_by_id
 
-router = APIRouter(tags=["Showtimes"])
+router = APIRouter(prefix="/times", tags=["Times"])
 
 
 @router.get("/showtimes")
