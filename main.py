@@ -12,6 +12,9 @@ from config import get_settings
 from database import init_database, close_database
 from routers.attractions import router as attractions_router
 from routers.raw import router as raw_router
+from routers.restaurants import router as restaurants_router
+from routers.services import router as services_router
+from routers.shops import router as shops_router
 from routers.shows import router as shows_router
 from routers.showtimes import router as showtimes_router
 from routers.waittimes import router as waittimes_router
@@ -94,6 +97,9 @@ app.include_router(waittimes_router)
 app.include_router(showtimes_router)
 app.include_router(attractions_router)
 app.include_router(shows_router)
+app.include_router(shops_router)
+app.include_router(restaurants_router)
+app.include_router(services_router)
 
 
 @app.get("/")
