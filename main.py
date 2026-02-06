@@ -100,18 +100,18 @@ app.include_router(restaurants_router)
 app.include_router(services_router)
 
 
-@app.get("/", tags=["API"])
+@app.get("/", tags=["API"], summary="API Info")
 async def api_info():
-    """API information."""
+    """Returns API name and version."""
     return {
         "api": "Europapark API",
         "version": "1.0.0"
     }
 
 
-@app.get("/health", tags=["API"])
+@app.get("/health", tags=["API"], summary="Health Check")
 async def health_check():
-    """Health check endpoint."""
+    """Returns service health status."""
     firebase_status = get_firebase_status()
     auth_service = get_auth_service()
     auth_status = auth_service.get_status()

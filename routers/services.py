@@ -1,7 +1,4 @@
-"""
-Services Router.
-Service facilities information API.
-"""
+"""Services Router."""
 
 from fastapi import APIRouter, HTTPException
 
@@ -10,16 +7,13 @@ from services.pois import get_all_services, get_service_by_id
 router = APIRouter(prefix="/info", tags=["Info"])
 
 
-@router.get("/services")
+@router.get("/services", summary="All services")
 async def services():
-    """All service facilities (restrooms, info points, first aid, etc.)."""
+    """Returns all service facilities (restrooms, info, first aid)."""
     entries = await get_all_services()
     
     if not entries:
-        raise HTTPException(
-            status_code=503,
-            detail="No service data available."
-        )
+        raise HTTPException(status_code=503, detail="No data available")
     
     return {
         "count": len(entries),
@@ -27,20 +21,12 @@ async def services():
     }
 
 
-@router.get("/services/{service_id}")
+@router.get("/services/{service_id}", summary="Service details")
 async def service_info(service_id: int):
-    """
-    Information for a service facility.
-    
-    Args:
-        service_id: ID of the service
-    """
+    """Returns service facility details."""
     info = await get_service_by_id(service_id)
     
     if not info:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Service with ID {service_id} not found"
-        )
+        raise HTTPException(status_code=404, detail="Service not found")
     
     return info.model_dump(exclude_none=True)

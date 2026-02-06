@@ -1,7 +1,4 @@
-"""
-Shows Router.
-Show information API.
-"""
+"""Shows Router."""
 
 from fastapi import APIRouter, HTTPException
 
@@ -10,16 +7,13 @@ from services.shows import get_show_info, get_all_shows
 router = APIRouter(prefix="/info", tags=["Info"])
 
 
-@router.get("/shows")
+@router.get("/shows", summary="All shows")
 async def shows():
-    """All shows with basic info."""
+    """Returns all shows with locations and times."""
     entries = await get_all_shows()
     
     if not entries:
-        raise HTTPException(
-            status_code=503,
-            detail="No show data available. Cache not initialized yet."
-        )
+        raise HTTPException(status_code=503, detail="Cache not initialized")
     
     return {
         "count": len(entries),
@@ -27,27 +21,12 @@ async def shows():
     }
 
 
-@router.get("/shows/{show_id}")
+@router.get("/shows/{show_id}", summary="Show details")
 async def show_info(show_id: int):
-    """
-    Full information for a show.
-    
-    Includes:
-    - Name, description
-    - Location (name and coordinates)
-    - Duration
-    - Images
-    - Current show times
-    
-    Args:
-        show_id: ID of the show
-    """
+    """Returns full show details including location, duration, and times."""
     info = await get_show_info(show_id)
     
     if not info:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Show with ID {show_id} not found"
-        )
+        raise HTTPException(status_code=404, detail="Show not found")
     
     return info.model_dump(exclude_none=True)

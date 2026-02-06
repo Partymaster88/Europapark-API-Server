@@ -1,7 +1,4 @@
-"""
-Waittimes Router.
-Wait times API with processed data.
-"""
+"""Waittimes Router."""
 
 from fastapi import APIRouter, HTTPException
 
@@ -10,28 +7,13 @@ from services.waittimes import get_processed_waittimes, get_waittime_by_id
 router = APIRouter(prefix="/times", tags=["Times"])
 
 
-@router.get("/waittimes")
+@router.get("/waittimes", summary="All wait times")
 async def waittimes():
-    """
-    All wait times with names and status.
-    
-    Status values:
-    - operational: Attraction in operation
-    - closed: Closed
-    - refurbishment: Under maintenance
-    - weather: Closed due to weather
-    - ice: Closed due to ice
-    - down: Technical issues
-    - vqueue_temporarily_full: Virtual queue temporarily full
-    - vqueue_full: Virtual queue completely full
-    """
+    """Returns current wait times for all attractions with status."""
     entries = await get_processed_waittimes()
     
     if not entries:
-        raise HTTPException(
-            status_code=503,
-            detail="No wait times available. Cache not initialized yet."
-        )
+        raise HTTPException(status_code=503, detail="Cache not initialized")
     
     return {
         "count": len(entries),
@@ -39,20 +21,12 @@ async def waittimes():
     }
 
 
-@router.get("/waittimes/{attraction_id}")
+@router.get("/waittimes/{attraction_id}", summary="Wait time by ID")
 async def waittime_by_id(attraction_id: int):
-    """
-    Wait time for a specific attraction.
-    
-    Args:
-        attraction_id: ID of the attraction (from POI data)
-    """
+    """Returns wait time for a specific attraction."""
     entry = await get_waittime_by_id(attraction_id)
     
     if not entry:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Attraction with ID {attraction_id} not found"
-        )
+        raise HTTPException(status_code=404, detail="Attraction not found")
     
     return entry.model_dump()

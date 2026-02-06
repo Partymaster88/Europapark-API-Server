@@ -1,7 +1,4 @@
-"""
-Attractions Router.
-Attraction information API.
-"""
+"""Attractions Router."""
 
 from fastapi import APIRouter, HTTPException
 
@@ -10,16 +7,13 @@ from services.attractions import get_attraction_info, get_all_attractions
 router = APIRouter(prefix="/info", tags=["Info"])
 
 
-@router.get("/attractions")
+@router.get("/attractions", summary="All attractions")
 async def attractions():
-    """All attractions with basic info."""
+    """Returns all attractions with basic info and wait times."""
     entries = await get_all_attractions()
     
     if not entries:
-        raise HTTPException(
-            status_code=503,
-            detail="No attraction data available. Cache not initialized yet."
-        )
+        raise HTTPException(status_code=503, detail="Cache not initialized")
     
     return {
         "count": len(entries),
@@ -27,28 +21,12 @@ async def attractions():
     }
 
 
-@router.get("/attractions/{attraction_id}")
+@router.get("/attractions/{attraction_id}", summary="Attraction details")
 async def attraction_info(attraction_id: int):
-    """
-    Full information for an attraction.
-    
-    Includes:
-    - Basic info (name, description, type)
-    - Location (coordinates)
-    - Height/age requirements
-    - Stress levels (speed, height, etc.)
-    - Images
-    - Current wait time
-    
-    Args:
-        attraction_id: ID of the attraction (same ID as in /waittimes)
-    """
+    """Returns full details including requirements, stress levels, and images."""
     info = await get_attraction_info(attraction_id)
     
     if not info:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Attraction with ID {attraction_id} not found"
-        )
+        raise HTTPException(status_code=404, detail="Attraction not found")
     
     return info.model_dump(exclude_none=True)

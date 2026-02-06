@@ -1,7 +1,4 @@
-"""
-Raw API Router.
-Returns raw data from the Europapark API.
-"""
+"""Raw API Router."""
 
 from fastapi import APIRouter, HTTPException
 
@@ -13,48 +10,48 @@ from services.europapark_api import (
     get_show_times
 )
 
-router = APIRouter(prefix="/raw", tags=["Raw API"])
+router = APIRouter(prefix="/raw", tags=["Raw"])
 
 
-@router.get("/waittimes")
+@router.get("/waittimes", summary="Raw wait times")
 async def raw_waittimes():
-    """Raw wait times data from Europapark API."""
+    """Returns unprocessed wait times from Europapark API."""
     try:
         return await get_waiting_times()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/pois")
+@router.get("/pois", summary="Raw POIs")
 async def raw_pois():
-    """Raw POI data (attractions, shows, etc.) from Europapark API."""
+    """Returns unprocessed POI data from Europapark API."""
     try:
         return await get_pois()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/seasons")
+@router.get("/seasons", summary="Raw seasons")
 async def raw_seasons():
-    """Raw season/calendar data from Europapark API."""
+    """Returns unprocessed season data from Europapark API."""
     try:
         return await get_seasons()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/openingtimes")
+@router.get("/openingtimes", summary="Raw opening times")
 async def raw_opening_times():
-    """Raw opening times data from Europapark API."""
+    """Returns unprocessed opening times from Europapark API."""
     try:
         return await get_opening_times()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/showtimes")
+@router.get("/showtimes", summary="Raw show times")
 async def raw_show_times():
-    """Raw show times data from Europapark API."""
+    """Returns unprocessed show times from Europapark API."""
     try:
         return await get_show_times()
     except Exception as e:
