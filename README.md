@@ -2,14 +2,6 @@
 
 Unofficial API server providing Europapark data including wait times, show times, opening hours, and POI information.
 
-## Disclaimer
-
-**This project is not affiliated with, endorsed by, or connected to Europa-Park GmbH & Co Mack KG in any way.**
-
-This is an unofficial, community-driven project that accesses publicly available data. Use at your own risk. The developers are not responsible for any misuse or any consequences arising from the use of this software.
-
-All trademarks, service marks, and company names are the property of their respective owners.
-
 ## Installation
 
 ```bash
@@ -89,3 +81,11 @@ nixpacks build . -o out
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Disclaimer
+
+**This project is not affiliated with, endorsed by, or connected to Europa-Park GmbH & Co Mack KG in any way.**
+
+This is an unofficial, community-driven project that accesses publicly available data. Use at your own risk. The developers are not responsible for any misuse or any consequences arising from the use of this software.
+
+All trademarks, service marks, and company names are the property of their respective owners.
