@@ -67,7 +67,7 @@ class AttractionInfo(BaseModel):
     age_requirements: Optional[AgeRequirements] = None
     stress_levels: Optional[StressLevel] = None
     image: Optional[ImageUrls] = None
-    icon: Optional[ImageUrls] = None
+    icon: Optional[str] = None
     wait_time: Optional[WaitTimeEntry] = None
 
 
@@ -159,7 +159,7 @@ async def get_attraction_info(attraction_id: int) -> Optional[AttractionInfo]:
     
     # Bild und Icon
     image = extract_image_urls(poi.get("image"))
-    icon = extract_image_urls(poi.get("icon"))
+    icon = poi.get("icon", {}).get("small") if poi.get("icon") else None
     
     return AttractionInfo(
         id=poi["id"],
@@ -214,7 +214,7 @@ async def get_all_attractions() -> list[AttractionInfo]:
             age_requirements=None,
             stress_levels=None,
             image=extract_image_urls(poi.get("image")),
-            icon=extract_image_urls(poi.get("icon")),
+            icon=poi.get("icon", {}).get("small") if poi.get("icon") else None,
             wait_time=wait_time
         ))
     
