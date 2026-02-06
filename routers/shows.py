@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from services.shows import get_show_info, get_all_shows
 
-router = APIRouter(tags=["Shows"])
+router = APIRouter(prefix="/info", tags=["Info"])
 
 
 @router.get("/shows")

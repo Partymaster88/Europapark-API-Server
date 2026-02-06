@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from services.attractions import get_attraction_info, get_all_attractions
 
-router = APIRouter(tags=["Attractions"])
+router = APIRouter(prefix="/info", tags=["Info"])
 
 
 @router.get("/attractions")
