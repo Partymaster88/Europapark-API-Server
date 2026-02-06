@@ -1,6 +1,6 @@
 """
 Seasons Service.
-Verarbeitet Saison-Daten aus Cache (nur Europapark).
+Processes season data from cache (Europapark only).
 """
 
 from typing import Optional
@@ -11,7 +11,7 @@ from services.cache import get_cache_service, CACHE_KEYS
 
 
 class SeasonInfo(BaseModel):
-    """Saison-Informationen."""
+    """Season information."""
     id: int
     saison: Optional[str] = None
     name: str
@@ -22,7 +22,7 @@ class SeasonInfo(BaseModel):
 
 
 async def get_seasons() -> list[SeasonInfo]:
-    """Holt alle Europapark-Saisons."""
+    """Get all Europapark seasons."""
     cache = get_cache_service()
     data = await cache.load(CACHE_KEYS["seasons"])
     
@@ -33,14 +33,14 @@ async def get_seasons() -> list[SeasonInfo]:
     for season in data["data"]:
         scopes = season.get("scopes", [])
         
-        # Nur Europapark
+        # Europapark only
         if "europapark" not in scopes:
             continue
         
         start = season.get("startAt")
         end = season.get("endAt")
         
-        # Icon aus iconSvg.reference
+        # Icon from iconSvg.reference
         icon = None
         if season.get("iconSvg") and season["iconSvg"].get("reference"):
             icon = season["iconSvg"]["reference"]
@@ -48,7 +48,7 @@ async def get_seasons() -> list[SeasonInfo]:
         results.append(SeasonInfo(
             id=season["id"],
             saison=season.get("theme"),
-            name=season.get("name", "Unbekannt"),
+            name=season.get("name", "Unknown"),
             description=season.get("description"),
             icon=icon,
             start=start[:10] if start else None,

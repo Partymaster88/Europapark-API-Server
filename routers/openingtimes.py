@@ -1,6 +1,6 @@
 """
 Openingtimes Router.
-Öffnungszeiten API.
+Opening hours API.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -13,16 +13,16 @@ router = APIRouter(prefix="/times", tags=["Times"])
 @router.get("/openingtimes")
 async def openingtimes():
     """
-    Aktuelle Öffnungszeiten des Europaparks.
+    Current opening hours of Europapark.
     
-    Enthält heute, morgen und nächste Öffnung.
+    Includes today, tomorrow, and next opening.
     """
     info = await get_opening_times()
     
     if not info:
         raise HTTPException(
             status_code=503,
-            detail="Keine Öffnungszeiten verfügbar."
+            detail="No opening times available."
         )
     
     return info.model_dump(exclude_none=True)

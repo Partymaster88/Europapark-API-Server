@@ -1,6 +1,6 @@
 """
 Attractions Service.
-Verarbeitet und formatiert Attraktionsinformationen aus POI-Daten.
+Processes and formats attraction information from POI data.
 """
 
 import logging
@@ -15,27 +15,27 @@ logger = logging.getLogger(__name__)
 
 
 class Location(BaseModel):
-    """Standort einer Attraktion."""
+    """Location of an attraction."""
     latitude: float
     longitude: float
 
 
 class HeightRequirements(BaseModel):
-    """Größenanforderungen."""
+    """Height requirements."""
     min_height: Optional[int] = None
     min_height_with_adult: Optional[int] = None
     max_height: Optional[int] = None
 
 
 class AgeRequirements(BaseModel):
-    """Altersanforderungen."""
+    """Age requirements."""
     min_age: Optional[int] = None
     min_age_with_adult: Optional[int] = None
     max_age: Optional[int] = None
 
 
 class StressLevel(BaseModel):
-    """Belastungslevel (0-3 Skala)."""
+    """Stress levels (0-3 scale)."""
     light: Optional[int] = None
     noise: Optional[int] = None
     smoke: Optional[int] = None
@@ -49,13 +49,13 @@ class StressLevel(BaseModel):
 
 
 class ImageUrls(BaseModel):
-    """Bild-URLs."""
+    """Image URLs."""
     small: Optional[str] = None
     medium: Optional[str] = None
 
 
 class AttractionInfo(BaseModel):
-    """Vollständige Attraktionsinformationen."""
+    """Full attraction information."""
     id: int
     code: Optional[int] = None
     name: str
@@ -72,7 +72,7 @@ class AttractionInfo(BaseModel):
 
 
 async def get_poi_by_id(attraction_id: int) -> Optional[dict]:
-    """Holt POI-Rohdaten anhand der ID (nur Europapark, keine Rulantica)."""
+    """Get raw POI data by ID (Europapark only, no Rulantica)."""
     cache = get_cache_service()
     pois_data = await cache.load(CACHE_KEYS["pois"])
     
@@ -88,7 +88,7 @@ async def get_poi_by_id(attraction_id: int) -> Optional[dict]:
 
 
 def extract_image_urls(image_data: Optional[dict]) -> Optional[ImageUrls]:
-    """Extrahiert Bild-URLs aus den POI-Daten."""
+    """Extract image URLs from POI data."""
     if not image_data:
         return None
     
@@ -99,7 +99,7 @@ def extract_image_urls(image_data: Optional[dict]) -> Optional[ImageUrls]:
 
 
 def extract_stress_levels(stress_data: Optional[dict]) -> Optional[StressLevel]:
-    """Extrahiert Belastungslevel aus den POI-Daten."""
+    """Extract stress levels from POI data."""
     if not stress_data:
         return None
     
@@ -118,18 +118,14 @@ def extract_stress_levels(stress_data: Optional[dict]) -> Optional[StressLevel]:
 
 
 async def get_attraction_info(attraction_id: int) -> Optional[AttractionInfo]:
-    """
-    Holt formatierte Attraktionsinformationen.
-    """
+    """Get formatted attraction information."""
     poi = await get_poi_by_id(attraction_id)
     
     if not poi:
         return None
     
-    # Wartezeit aus Cache holen
     wait_time = await get_waittime_by_id(attraction_id)
     
-    # Location extrahieren
     location = None
     if poi.get("latitude") and poi.get("longitude"):
         location = Location(
@@ -137,7 +133,6 @@ async def get_attraction_info(attraction_id: int) -> Optional[AttractionInfo]:
             longitude=poi["longitude"]
         )
     
-    # Größenanforderungen
     height_req = None
     if any([poi.get("minHeight"), poi.get("minHeightAdult"), poi.get("maxHeight")]):
         height_req = HeightRequirements(
@@ -146,7 +141,6 @@ async def get_attraction_info(attraction_id: int) -> Optional[AttractionInfo]:
             max_height=poi.get("maxHeight")
         )
     
-    # Altersanforderungen
     age_req = None
     if any([poi.get("minAge"), poi.get("minAgeAdult"), poi.get("maxAge")]):
         age_req = AgeRequirements(
@@ -155,17 +149,15 @@ async def get_attraction_info(attraction_id: int) -> Optional[AttractionInfo]:
             max_age=poi.get("maxAge") if poi.get("maxAge", 0) > 0 else None
         )
     
-    # Stress-Level
     stress_levels = extract_stress_levels(poi.get("stressStrainsSensationsLevel"))
     
-    # Bild und Icon
     image = extract_image_urls(poi.get("image"))
     icon = poi.get("icon", {}).get("small") if poi.get("icon") else None
     
     return AttractionInfo(
         id=poi["id"],
         code=poi.get("code", 0),
-        name=poi.get("name", "Unbekannt"),
+        name=poi.get("name", "Unknown"),
         description=poi.get("excerpt"),
         type=poi.get("type", "unknown"),
         area_id=poi.get("areaId"),
@@ -180,7 +172,7 @@ async def get_attraction_info(attraction_id: int) -> Optional[AttractionInfo]:
 
 
 async def get_all_attractions() -> list[AttractionInfo]:
-    """Holt alle Europapark-Attraktionen (keine Rulantica)."""
+    """Get all Europapark attractions (no Rulantica)."""
     cache = get_cache_service()
     pois_data = await cache.load(CACHE_KEYS["pois"])
     
@@ -191,11 +183,10 @@ async def get_all_attractions() -> list[AttractionInfo]:
     for poi in pois_data["data"].get("pois", []):
         scopes = poi.get("scopes", [])
         
-        # Nur Europapark Attraktionen (keine Rulantica)
+        # Europapark attractions only (no Rulantica)
         if poi.get("type") != "attraction" or "europapark" not in scopes:
             continue
         
-        # Wartezeit holen
         wait_time = await get_waittime_by_id(poi["id"])
         
         location = None
@@ -208,12 +199,12 @@ async def get_all_attractions() -> list[AttractionInfo]:
         results.append(AttractionInfo(
             id=poi["id"],
             code=poi.get("code", 0),
-            name=poi.get("name", "Unbekannt"),
+            name=poi.get("name", "Unknown"),
             description=poi.get("excerpt"),
             type=poi.get("type", "unknown"),
             area_id=poi.get("areaId"),
             location=location,
-            height_requirements=None,  # Kurzform ohne Details
+            height_requirements=None,
             age_requirements=None,
             stress_levels=None,
             image=extract_image_urls(poi.get("image")),

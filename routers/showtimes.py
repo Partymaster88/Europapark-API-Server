@@ -1,6 +1,6 @@
 """
 Showtimes Router.
-Showzeiten-API mit verarbeiteten Daten.
+Show times API with processed data.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -13,16 +13,16 @@ router = APIRouter(prefix="/times", tags=["Times"])
 @router.get("/showtimes")
 async def showtimes():
     """
-    Alle Showzeiten mit Namen und Location.
+    All show times with names and locations.
     
-    Times sind im ISO 8601 Format (z.B. "2026-02-06T15:15:00+01:00").
+    Times are in ISO 8601 format (e.g. "2026-02-06T15:15:00+01:00").
     """
     entries = await get_processed_showtimes()
     
     if not entries:
         raise HTTPException(
             status_code=503,
-            detail="Keine Showzeiten verfügbar. Cache noch nicht initialisiert."
+            detail="No show times available. Cache not initialized yet."
         )
     
     return {
@@ -34,17 +34,17 @@ async def showtimes():
 @router.get("/showtimes/{show_id}")
 async def showtime_by_id(show_id: int):
     """
-    Showzeiten für eine bestimmte Show.
+    Show times for a specific show.
     
     Args:
-        show_id: ID der Show
+        show_id: ID of the show
     """
     entry = await get_showtime_by_id(show_id)
     
     if not entry:
         raise HTTPException(
             status_code=404,
-            detail=f"Show mit ID {show_id} nicht gefunden"
+            detail=f"Show with ID {show_id} not found"
         )
     
     return entry.model_dump(exclude_none=True)

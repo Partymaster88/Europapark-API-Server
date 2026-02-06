@@ -1,6 +1,6 @@
 """
 Showtimes Service.
-Verarbeitet Showzeiten und verknüpft sie mit POI-Daten.
+Processes show times and links them with POI data.
 """
 
 import logging
@@ -14,13 +14,13 @@ logger = logging.getLogger(__name__)
 
 
 class Location(BaseModel):
-    """Standort."""
+    """Location."""
     latitude: float
     longitude: float
 
 
 class ShowTimeEntry(BaseModel):
-    """Showzeit-Eintrag."""
+    """Show time entry."""
     id: int
     name: str
     location: Optional[Location] = None
@@ -30,8 +30,8 @@ class ShowTimeEntry(BaseModel):
 
 async def get_show_info_map() -> dict[int, dict]:
     """
-    Erstellt ein Mapping von Show-ID zu Show-Informationen aus POI-Daten.
-    Shows sind unter showlocation POIs verschachtelt.
+    Create a mapping from show ID to show information from POI data.
+    Shows are nested under showlocation POIs.
     """
     cache = get_cache_service()
     pois_data = await cache.load(CACHE_KEYS["pois"])
@@ -43,17 +43,16 @@ async def get_show_info_map() -> dict[int, dict]:
     for poi in pois_data["data"].get("pois", []):
         scopes = poi.get("scopes", [])
         
-        # Nur Europapark (keine Rulantica)
+        # Europapark only (no Rulantica)
         if "europapark" not in scopes:
             continue
         
-        # Shows aus showlocation extrahieren
         shows = poi.get("shows", [])
         for show in shows:
             show_id = show.get("id")
             if show_id:
                 show_map[show_id] = {
-                    "name": show.get("name", "Unbekannt"),
+                    "name": show.get("name", "Unknown"),
                     "latitude": poi.get("latitude"),
                     "longitude": poi.get("longitude"),
                 }
@@ -62,29 +61,23 @@ async def get_show_info_map() -> dict[int, dict]:
 
 
 async def get_processed_showtimes() -> list[ShowTimeEntry]:
-    """
-    Holt verarbeitete Showzeiten mit Namen und Location.
-    """
+    """Get processed show times with names and location."""
     cache = get_cache_service()
     
-    # Showzeiten laden
     showtimes_data = await cache.load(CACHE_KEYS["showtimes"])
     if not showtimes_data or "data" not in showtimes_data:
         return []
     
-    # Show-Info-Mapping laden
     show_map = await get_show_info_map()
     
     results = []
     for entry in showtimes_data["data"]:
         show_id = entry.get("showId")
         
-        # Show-Info holen
         show_info = show_map.get(show_id)
         if not show_info:
             continue
         
-        # Location
         location = None
         if show_info.get("latitude") and show_info.get("longitude"):
             location = Location(
@@ -104,9 +97,7 @@ async def get_processed_showtimes() -> list[ShowTimeEntry]:
 
 
 async def get_showtime_by_id(show_id: int) -> Optional[ShowTimeEntry]:
-    """
-    Holt Showzeiten für eine bestimmte Show.
-    """
+    """Get show times for a specific show."""
     showtimes = await get_processed_showtimes()
     
     for entry in showtimes:

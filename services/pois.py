@@ -1,6 +1,6 @@
 """
 POI Service.
-Generischer Service für verschiedene POI-Typen (Shops, Restaurants, Services).
+Generic service for various POI types (shops, restaurants, services).
 """
 
 import logging
@@ -14,19 +14,19 @@ logger = logging.getLogger(__name__)
 
 
 class Location(BaseModel):
-    """Standort."""
+    """Location."""
     latitude: float
     longitude: float
 
 
 class ImageUrls(BaseModel):
-    """Bild-URLs."""
+    """Image URLs."""
     small: Optional[str] = None
     medium: Optional[str] = None
 
 
 class POIInfo(BaseModel):
-    """POI-Informationen."""
+    """POI information."""
     id: int
     name: str
     description: Optional[str] = None
@@ -38,7 +38,7 @@ class POIInfo(BaseModel):
 
 
 def extract_image_urls(image_data: Optional[dict]) -> Optional[ImageUrls]:
-    """Extrahiert Bild-URLs aus den POI-Daten."""
+    """Extract image URLs from POI data."""
     if not image_data:
         return None
     
@@ -49,9 +49,7 @@ def extract_image_urls(image_data: Optional[dict]) -> Optional[ImageUrls]:
 
 
 async def get_pois_by_type(poi_type: str) -> list[POIInfo]:
-    """
-    Holt alle POIs eines bestimmten Typs (nur Europapark).
-    """
+    """Get all POIs of a specific type (Europapark only)."""
     cache = get_cache_service()
     pois_data = await cache.load(CACHE_KEYS["pois"])
     
@@ -62,11 +60,10 @@ async def get_pois_by_type(poi_type: str) -> list[POIInfo]:
     for poi in pois_data["data"].get("pois", []):
         scopes = poi.get("scopes", [])
         
-        # Nur Europapark und passender Typ
+        # Europapark only and matching type
         if poi.get("type") != poi_type or "europapark" not in scopes:
             continue
         
-        # Location
         location = None
         if poi.get("latitude") and poi.get("longitude"):
             location = Location(
@@ -76,7 +73,7 @@ async def get_pois_by_type(poi_type: str) -> list[POIInfo]:
         
         results.append(POIInfo(
             id=poi["id"],
-            name=poi.get("name", "Unbekannt"),
+            name=poi.get("name", "Unknown"),
             description=poi.get("excerpt"),
             type=poi.get("type"),
             area_id=poi.get("areaId"),
@@ -89,9 +86,7 @@ async def get_pois_by_type(poi_type: str) -> list[POIInfo]:
 
 
 async def get_poi_by_id_and_type(poi_id: int, poi_type: str) -> Optional[POIInfo]:
-    """
-    Holt einen POI anhand von ID und Typ.
-    """
+    """Get a POI by ID and type."""
     cache = get_cache_service()
     pois_data = await cache.load(CACHE_KEYS["pois"])
     
@@ -114,7 +109,7 @@ async def get_poi_by_id_and_type(poi_id: int, poi_type: str) -> Optional[POIInfo
             
             return POIInfo(
                 id=poi["id"],
-                name=poi.get("name", "Unbekannt"),
+                name=poi.get("name", "Unknown"),
                 description=poi.get("excerpt"),
                 type=poi.get("type"),
                 area_id=poi.get("areaId"),
@@ -126,7 +121,7 @@ async def get_poi_by_id_and_type(poi_id: int, poi_type: str) -> Optional[POIInfo
     return None
 
 
-# Convenience-Funktionen für spezifische Typen
+# Convenience functions for specific types
 async def get_all_shops() -> list[POIInfo]:
     return await get_pois_by_type("shopping")
 

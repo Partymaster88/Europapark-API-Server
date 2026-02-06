@@ -1,6 +1,6 @@
 """
 Waittimes Service.
-Verarbeitet Wartezeiten und verknüpft sie mit POI-Daten.
+Processes wait times and links them with POI data.
 """
 
 import logging
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class AttractionStatus(str, Enum):
-    """Status einer Attraktion."""
+    """Status of an attraction."""
     OPERATIONAL = "operational"
     CLOSED = "closed"
     REFURBISHMENT = "refurbishment"
@@ -28,7 +28,7 @@ class AttractionStatus(str, Enum):
 
 
 class WaitTimeEntry(BaseModel):
-    """Wartezeit-Eintrag."""
+    """Wait time entry."""
     id: int
     name: str
     time: Optional[int]
@@ -39,23 +39,23 @@ class WaitTimeEntry(BaseModel):
 
 def get_status_from_time(time_value: int) -> tuple[AttractionStatus, Optional[int]]:
     """
-    Ermittelt Status und bereinigte Wartezeit aus dem time-Wert.
+    Determine status and cleaned wait time from time value.
     
-    Zeit-Codes:
-    - <= 90: Wartezeit in Minuten
-    - 91: 90+ Minuten
-    - 222: Wartung/Refurbishment
-    - 333: Geschlossen
-    - 444: Wetter
-    - 555: Eis
-    - 666: Virtual Queue temporär voll
-    - 777: Virtual Queue voll
-    - 999: Störung/Down
+    Time codes:
+    - <= 90: Wait time in minutes
+    - 91: 90+ minutes
+    - 222: Maintenance/Refurbishment
+    - 333: Closed
+    - 444: Weather
+    - 555: Ice
+    - 666: Virtual queue temporarily full
+    - 777: Virtual queue full
+    - 999: Down/Technical issues
     """
     if time_value <= 90:
         return AttractionStatus.OPERATIONAL, time_value
     elif time_value == 91:
-        return AttractionStatus.OPERATIONAL, 90  # 90+ Minuten
+        return AttractionStatus.OPERATIONAL, 90  # 90+ minutes
     elif time_value == 222:
         return AttractionStatus.REFURBISHMENT, None
     elif time_value == 333:
@@ -75,9 +75,7 @@ def get_status_from_time(time_value: int) -> tuple[AttractionStatus, Optional[in
 
 
 async def get_poi_name_map() -> dict[int, dict]:
-    """
-    Erstellt ein Mapping von POI-Code zu POI-Daten.
-    """
+    """Create a mapping from POI code to POI data."""
     cache = get_cache_service()
     pois_data = await cache.load(CACHE_KEYS["pois"])
     
@@ -89,11 +87,11 @@ async def get_poi_name_map() -> dict[int, dict]:
         code = poi.get("code")
         scopes = poi.get("scopes", [])
         
-        # Nur Europapark POIs (keine Rulantica)
+        # Europapark POIs only (no Rulantica)
         if code and "europapark" in scopes:
             poi_map[code] = {
                 "id": poi.get("id"),
-                "name": poi.get("name", "Unbekannt"),
+                "name": poi.get("name", "Unknown"),
                 "type": poi.get("type"),
                 "latitude": poi.get("latitude"),
                 "longitude": poi.get("longitude"),
@@ -103,17 +101,13 @@ async def get_poi_name_map() -> dict[int, dict]:
 
 
 async def get_processed_waittimes() -> list[WaitTimeEntry]:
-    """
-    Holt verarbeitete Wartezeiten mit Namen und Status.
-    """
+    """Get processed wait times with names and status."""
     cache = get_cache_service()
     
-    # Wartezeiten laden
     waittimes_data = await cache.load(CACHE_KEYS["waittimes"])
     if not waittimes_data or "data" not in waittimes_data:
         return []
     
-    # POI-Namen-Mapping laden
     poi_map = await get_poi_name_map()
     
     results = []
@@ -121,16 +115,14 @@ async def get_processed_waittimes() -> list[WaitTimeEntry]:
         code = entry.get("code")
         time_value = entry.get("time", 0)
         
-        # POI-Daten holen
         poi_info = poi_map.get(code, {})
         poi_id = poi_info.get("id")
-        poi_name = poi_info.get("name", f"Attraktion #{code}")
+        poi_name = poi_info.get("name", f"Attraction #{code}")
         
-        # Nur Attraktionen mit bekannter ID
+        # Only attractions with known ID
         if poi_id is None:
             continue
         
-        # Status und bereinigte Zeit ermitteln
         status, clean_time = get_status_from_time(time_value)
         
         results.append(WaitTimeEntry(
@@ -146,9 +138,7 @@ async def get_processed_waittimes() -> list[WaitTimeEntry]:
 
 
 async def get_waittime_by_id(attraction_id: int) -> Optional[WaitTimeEntry]:
-    """
-    Holt Wartezeit für eine bestimmte Attraktion.
-    """
+    """Get wait time for a specific attraction."""
     waittimes = await get_processed_waittimes()
     
     for entry in waittimes:

@@ -34,53 +34,47 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle-Manager für die FastAPI-Anwendung."""
-    logger.info("Starte Europapark API Server...")
+    """Lifecycle manager for the FastAPI application."""
+    logger.info("Starting Europapark API Server...")
     
-    # Konfiguration laden
     settings = get_settings()
-    logger.info(f"Konfiguration geladen. Firebase Project: {settings.fb_project_id}")
+    logger.info(f"Configuration loaded. Firebase Project: {settings.fb_project_id}")
     
-    # Datenbank initialisieren
     await init_database()
     
-    # Firebase Health-Check
     status = await check_firebase_health()
     if status.is_healthy:
-        logger.info(f"Firebase Health-Check erfolgreich. Response Time: {status.response_time_ms:.2f}ms")
+        logger.info(f"Firebase health check successful. Response time: {status.response_time_ms:.2f}ms")
     else:
-        logger.warning(f"Firebase Health-Check fehlgeschlagen: {status.last_error}")
+        logger.warning(f"Firebase health check failed: {status.last_error}")
     
-    # OAuth2 Authentifizierung
     auth_success = await initialize_auth()
     if auth_success:
         auth_service = get_auth_service()
-        logger.info(f"Authentifizierung erfolgreich. Token gültig bis: {auth_service.get_status().get('expires_at')}")
+        logger.info(f"Authentication successful. Token valid until: {auth_service.get_status().get('expires_at')}")
         
-        # Cache-Service starten (nur wenn authentifiziert)
         cache_service = get_cache_service()
         cache_service.start()
-        logger.info("Cache-Service gestartet.")
+        logger.info("Cache service started.")
     else:
-        logger.warning("Authentifizierung fehlgeschlagen.")
+        logger.warning("Authentication failed.")
     
     start_scheduler()
-    logger.info("Server erfolgreich gestartet.")
+    logger.info("Server started successfully.")
     
     yield
     
-    # Shutdown
-    logger.info("Fahre Server herunter...")
+    logger.info("Shutting down server...")
     get_cache_service().stop()
     await shutdown_auth()
     stop_scheduler()
     await close_database()
-    logger.info("Server heruntergefahren.")
+    logger.info("Server shut down.")
 
 
 app = FastAPI(
     title="Europapark API",
-    description="API Server für Europapark-Daten",
+    description="API server for Europapark data",
     version="1.0.0",
     lifespan=lifespan,
     redoc_url=None,
@@ -94,7 +88,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Router registrieren
 app.include_router(raw_router)
 app.include_router(waittimes_router)
 app.include_router(showtimes_router)
@@ -109,15 +102,16 @@ app.include_router(services_router)
 
 @app.get("/", tags=["API"])
 async def api_info():
-    """API-Info."""
+    """API information."""
     return {
         "api": "Europapark API",
         "version": "1.0.0"
     }
 
 
-@app.get("/health")
+@app.get("/health", tags=["API"])
 async def health_check():
+    """Health check endpoint."""
     firebase_status = get_firebase_status()
     auth_service = get_auth_service()
     auth_status = auth_service.get_status()

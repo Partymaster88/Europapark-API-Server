@@ -1,6 +1,6 @@
 """
 Restaurants Router.
-Restaurant-Informationen API.
+Restaurant information API.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -12,13 +12,13 @@ router = APIRouter(prefix="/info", tags=["Info"])
 
 @router.get("/restaurants")
 async def restaurants():
-    """Alle Restaurants und Gastronomie."""
+    """All restaurants and gastronomy."""
     entries = await get_all_restaurants()
     
     if not entries:
         raise HTTPException(
             status_code=503,
-            detail="Keine Restaurantdaten verfügbar."
+            detail="No restaurant data available."
         )
     
     return {
@@ -30,17 +30,17 @@ async def restaurants():
 @router.get("/restaurants/{restaurant_id}")
 async def restaurant_info(restaurant_id: int):
     """
-    Informationen zu einem Restaurant.
+    Information for a restaurant.
     
     Args:
-        restaurant_id: ID des Restaurants
+        restaurant_id: ID of the restaurant
     """
     info = await get_restaurant_by_id(restaurant_id)
     
     if not info:
         raise HTTPException(
             status_code=404,
-            detail=f"Restaurant mit ID {restaurant_id} nicht gefunden"
+            detail=f"Restaurant with ID {restaurant_id} not found"
         )
     
     return info.model_dump(exclude_none=True)

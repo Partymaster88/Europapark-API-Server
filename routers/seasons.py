@@ -1,6 +1,6 @@
 """
 Seasons Router.
-Saison-Daten API.
+Season data API.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -12,15 +12,13 @@ router = APIRouter(prefix="/times", tags=["Times"])
 
 @router.get("/seasons")
 async def seasons():
-    """
-    Alle Europapark-Saisons.
-    """
+    """All Europapark seasons."""
     entries = await get_seasons()
     
     if not entries:
         raise HTTPException(
             status_code=503,
-            detail="Keine Saisondaten verfügbar."
+            detail="No season data available."
         )
     
     return {

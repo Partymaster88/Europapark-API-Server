@@ -1,6 +1,6 @@
 """
 Shops Router.
-Shop-Informationen API.
+Shop information API.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -12,13 +12,13 @@ router = APIRouter(prefix="/info", tags=["Info"])
 
 @router.get("/shops")
 async def shops():
-    """Alle Shops."""
+    """All shops."""
     entries = await get_all_shops()
     
     if not entries:
         raise HTTPException(
             status_code=503,
-            detail="Keine Shopdaten verfügbar."
+            detail="No shop data available."
         )
     
     return {
@@ -30,17 +30,17 @@ async def shops():
 @router.get("/shops/{shop_id}")
 async def shop_info(shop_id: int):
     """
-    Informationen zu einem Shop.
+    Information for a shop.
     
     Args:
-        shop_id: ID des Shops
+        shop_id: ID of the shop
     """
     info = await get_shop_by_id(shop_id)
     
     if not info:
         raise HTTPException(
             status_code=404,
-            detail=f"Shop mit ID {shop_id} nicht gefunden"
+            detail=f"Shop with ID {shop_id} not found"
         )
     
     return info.model_dump(exclude_none=True)

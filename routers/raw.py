@@ -1,6 +1,6 @@
 """
 Raw API Router.
-Gibt rohe Daten der Europapark API zurück.
+Returns raw data from the Europapark API.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/raw", tags=["Raw API"])
 
 @router.get("/waittimes")
 async def raw_waittimes():
-    """Rohe Wartezeiten-Daten der Europapark API."""
+    """Raw wait times data from Europapark API."""
     try:
         return await get_waiting_times()
     except Exception as e:
@@ -27,7 +27,7 @@ async def raw_waittimes():
 
 @router.get("/pois")
 async def raw_pois():
-    """Rohe POI-Daten (Attraktionen) der Europapark API."""
+    """Raw POI data (attractions, shows, etc.) from Europapark API."""
     try:
         return await get_pois()
     except Exception as e:
@@ -36,7 +36,7 @@ async def raw_pois():
 
 @router.get("/seasons")
 async def raw_seasons():
-    """Rohe Saison/Kalender-Daten der Europapark API."""
+    """Raw season/calendar data from Europapark API."""
     try:
         return await get_seasons()
     except Exception as e:
@@ -45,7 +45,7 @@ async def raw_seasons():
 
 @router.get("/openingtimes")
 async def raw_opening_times():
-    """Rohe Öffnungszeiten-Daten der Europapark API."""
+    """Raw opening times data from Europapark API."""
     try:
         return await get_opening_times()
     except Exception as e:
@@ -54,7 +54,7 @@ async def raw_opening_times():
 
 @router.get("/showtimes")
 async def raw_show_times():
-    """Rohe Showzeiten-Daten der Europapark API."""
+    """Raw show times data from Europapark API."""
     try:
         return await get_show_times()
     except Exception as e:
