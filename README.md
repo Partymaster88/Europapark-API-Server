@@ -1,6 +1,14 @@
 # Europapark API Server
 
-FastAPI server for Europapark data with OAuth2 authentication.
+Unofficial API server providing Europapark data including wait times, show times, opening hours, and POI information.
+
+## Disclaimer
+
+**This project is not affiliated with, endorsed by, or connected to Europa-Park GmbH & Co Mack KG in any way.**
+
+This is an unofficial, community-driven project that accesses publicly available data. Use at your own risk. The developers are not responsible for any misuse or any consequences arising from the use of this software.
+
+All trademarks, service marks, and company names are the property of their respective owners.
 
 ## Installation
 
@@ -11,17 +19,37 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-## Run
+Configure the `.env` file with the required credentials.
+
+## Development
 
 ```bash
 uvicorn main:app --reload --port 8000
 ```
 
-## Deployment (Dokploy)
+## Deployment
 
-1. Connect repository
-2. Set environment variables from `.env.example`
-3. Deploy - Nixpacks detects `nixpacks.toml` automatically
+### Docker
+
+```bash
+docker build -t europapark-api .
+docker run -p 8000:8000 --env-file .env europapark-api
+```
+
+### Nixpacks
+
+The project includes `nixpacks.toml` for automatic builds:
+
+```bash
+nixpacks build . -o out
+```
+
+### Manual
+
+1. Set up Python environment
+2. Install dependencies: `pip install -r requirements.txt`
+3. Configure environment variables
+4. Run: `uvicorn main:app --host 0.0.0.0 --port 8000`
 
 ## Endpoints
 
@@ -58,32 +86,6 @@ uvicorn main:app --reload --port 8000
 | `/health` | Health check |
 | `/docs` | Swagger UI |
 
-## Structure
+## License
 
-```
-├── main.py              # FastAPI App
-├── config.py            # Settings
-├── database.py          # SQLAlchemy DB
-├── nixpacks.toml        # Deployment
-├── requirements.txt     # Dependencies
-├── .env                 # Configuration
-├── routers/
-│   ├── raw.py           # Raw API routes
-│   ├── waittimes.py     # Wait times routes
-│   ├── showtimes.py     # Show times routes
-│   ├── openingtimes.py  # Opening times routes
-│   ├── seasons.py       # Seasons routes
-│   ├── attractions.py   # Attractions routes
-│   ├── shows.py         # Shows routes
-│   ├── shops.py         # Shops routes
-│   ├── restaurants.py   # Restaurants routes
-│   └── services.py      # Services routes
-└── services/
-    ├── auth.py          # OAuth2
-    ├── cache.py         # Data caching
-    ├── crypto.py        # Blowfish decryption
-    ├── europapark_api.py # API client
-    ├── firebase_*.py    # Firebase services
-    ├── token_storage.py # Token persistence
-    └── scheduler.py     # Scheduled tasks
-```
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
