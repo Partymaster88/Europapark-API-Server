@@ -13,9 +13,10 @@ from services.cache import get_cache_service, CACHE_KEYS
 class SeasonInfo(BaseModel):
     """Saison-Informationen."""
     id: int
+    saison: Optional[str] = None
     name: str
-    theme: Optional[str] = None
     description: Optional[str] = None
+    icon: Optional[str] = None
     start: Optional[str] = None
     end: Optional[str] = None
 
@@ -36,15 +37,20 @@ async def get_seasons() -> list[SeasonInfo]:
         if "europapark" not in scopes:
             continue
         
-        # Start/End aus excerpt extrahieren oder aus Feldern
         start = season.get("startAt")
         end = season.get("endAt")
         
+        # Icon aus iconSvg.reference
+        icon = None
+        if season.get("iconSvg") and season["iconSvg"].get("reference"):
+            icon = season["iconSvg"]["reference"]
+        
         results.append(SeasonInfo(
             id=season["id"],
+            saison=season.get("theme"),
             name=season.get("name", "Unbekannt"),
-            theme=season.get("theme"),
-            description=season.get("excerpt"),
+            description=season.get("description"),
+            icon=icon,
             start=start[:10] if start else None,
             end=end[:10] if end else None
         ))
