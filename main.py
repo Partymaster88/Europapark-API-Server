@@ -83,6 +83,7 @@ app = FastAPI(
     description="API Server für Europapark-Daten",
     version="1.0.0",
     lifespan=lifespan,
+    redoc_url=None,
 )
 
 app.add_middleware(
