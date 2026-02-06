@@ -34,6 +34,8 @@ class WaitTimeEntry(BaseModel):
     name: str
     time: Optional[int]
     status: AttractionStatus
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 def get_status_from_time(time_value: int) -> tuple[AttractionStatus, Optional[int]]:
@@ -91,6 +93,8 @@ async def get_poi_name_map() -> dict[int, dict]:
                 "id": poi.get("id"),
                 "name": poi.get("name", "Unbekannt"),
                 "type": poi.get("type"),
+                "latitude": poi.get("latitude"),
+                "longitude": poi.get("longitude"),
             }
     
     return poi_map
@@ -132,7 +136,9 @@ async def get_processed_waittimes() -> list[WaitTimeEntry]:
             code=code,
             name=poi_name,
             time=clean_time,
-            status=status
+            status=status,
+            latitude=poi_info.get("latitude"),
+            longitude=poi_info.get("longitude")
         ))
     
     return results
