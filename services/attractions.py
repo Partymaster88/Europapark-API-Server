@@ -35,21 +35,23 @@ class AgeRequirements(BaseModel):
 
 
 class StressLevel(BaseModel):
-    """Belastungslevel."""
-    speed: Optional[int] = None
-    spin: Optional[int] = None
-    swing: Optional[int] = None
-    height: Optional[int] = None
-    water: Optional[int] = None
+    """Belastungslevel (0-3 Skala)."""
+    light: Optional[int] = None
+    noise: Optional[int] = None
+    smoke: Optional[int] = None
+    smell: Optional[int] = None
     darkness: Optional[int] = None
+    height: Optional[int] = None
+    fear: Optional[int] = None
+    narrow_space: Optional[int] = None
+    g_force: Optional[int] = None
+    splashing_water: Optional[int] = None
 
 
 class ImageUrls(BaseModel):
-    """Bild-URLs in verschiedenen Größen."""
+    """Bild-URLs."""
     small: Optional[str] = None
     medium: Optional[str] = None
-    large: Optional[str] = None
-    original: Optional[str] = None
 
 
 class AttractionInfo(BaseModel):
@@ -90,9 +92,7 @@ def extract_image_urls(image_data: Optional[dict]) -> Optional[ImageUrls]:
     
     return ImageUrls(
         small=image_data.get("small"),
-        medium=image_data.get("medium"),
-        large=image_data.get("large"),
-        original=image_data.get("reference")
+        medium=image_data.get("medium")
     )
 
 
@@ -102,12 +102,16 @@ def extract_stress_levels(stress_data: Optional[dict]) -> Optional[StressLevel]:
         return None
     
     return StressLevel(
-        speed=stress_data.get("speed"),
-        spin=stress_data.get("spin"),
-        swing=stress_data.get("swing"),
+        light=stress_data.get("light"),
+        noise=stress_data.get("noise"),
+        smoke=stress_data.get("smoke"),
+        smell=stress_data.get("smell"),
+        darkness=stress_data.get("darkness"),
         height=stress_data.get("height"),
-        water=stress_data.get("water"),
-        darkness=stress_data.get("darkness")
+        fear=stress_data.get("fear"),
+        narrow_space=stress_data.get("narrowSpace"),
+        g_force=stress_data.get("gForce"),
+        splashing_water=stress_data.get("splashingWater")
     )
 
 
